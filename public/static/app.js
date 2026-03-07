@@ -5,6 +5,20 @@
 
 const API = axios.create({ baseURL: '/api' });
 
+// ---- Auth token injection ----
+API.interceptors.request.use(cfg => {
+  const token = localStorage.getItem('dsg_token');
+  if (token) cfg.headers['Authorization'] = 'Bearer ' + token;
+  return cfg;
+});
+API.interceptors.response.use(r => r, err => {
+  if (err?.response?.status === 401 && !err.config.url.includes('/auth/')) {
+    localStorage.removeItem('dsg_token'); localStorage.removeItem('dsg_user');
+    window.location.href = '/login';
+  }
+  return Promise.reject(err);
+});
+
 // ---- State ----
 let state = {
   page: 'dashboard',
@@ -14,7 +28,19 @@ let state = {
   selectedCampaign: null,
   dataforseoStatus: null,
   editingClient: null,
+  currentUser: null,      // logged-in team member
+  teamUsers: null,        // PM only: list of all team users
 };
+
+// ---- Role helpers ----
+function isPM() { return state.currentUser?.role === 'project_manager'; }
+function isExec() { return state.currentUser?.role === 'project_executor'; }
+function can(permission) {
+  if (!state.currentUser) return false;
+  if (state.currentUser.role === 'project_manager') return true;
+  const perms = state.currentUser.permissions || [];
+  return perms.includes(permission);
+}
 
 // ---- Toast ----
 function toast(msg, type = 'success') {
@@ -122,22 +148,30 @@ function render() {
 }
 
 function renderSidebar() {
-  const links = [
-    { id: 'dashboard', icon: 'fa-gauge-high', label: 'Dashboard' },
-    { id: 'clients', icon: 'fa-users', label: 'Clients' },
-    { id: 'campaigns', icon: 'fa-rocket', label: 'Campaigns' },
-    { id: 'proposals', icon: 'fa-file-contract', label: 'Proposals' },
-    { id: 'payments', icon: 'fa-credit-card', label: 'Billing & Payments' },
-    { id: 'keywords', icon: 'fa-magnifying-glass-chart', label: 'Rank Tracking' },
-    { id: 'llm', icon: 'fa-robot', label: 'AI Visibility' },
-    { id: 'content', icon: 'fa-pen-nib', label: 'Content' },
-    { id: 'social', icon: 'fa-share-nodes', label: 'Social Media' },
-    { id: 'press', icon: 'fa-newspaper', label: 'Press Releases' },
-    { id: 'wordpress', icon: 'fa-wordpress', label: 'WordPress Projects' },
-    { id: 'reports', icon: 'fa-chart-line', label: 'Reports' },
-    { id: 'dataforseo', icon: 'fa-database', label: 'DataForSEO' },
-    { id: 'onboarding', icon: 'fa-clipboard-list', label: 'Onboarding' },
+  const u = state.currentUser;
+  // Build nav – payments and team are PM only
+  const allLinks = [
+    { id: 'dashboard', icon: 'fa-gauge-high', label: 'Dashboard', pmOnly: false },
+    { id: 'clients', icon: 'fa-users', label: 'Clients', pmOnly: false },
+    { id: 'campaigns', icon: 'fa-rocket', label: 'Campaigns', pmOnly: false },
+    { id: 'proposals', icon: 'fa-file-contract', label: 'Proposals', pmOnly: false },
+    { id: 'payments', icon: 'fa-credit-card', label: 'Billing & Payments', pmOnly: true },
+    { id: 'keywords', icon: 'fa-magnifying-glass-chart', label: 'Rank Tracking', pmOnly: false },
+    { id: 'llm', icon: 'fa-robot', label: 'AI Visibility', pmOnly: false },
+    { id: 'content', icon: 'fa-pen-nib', label: 'Content', pmOnly: false },
+    { id: 'social', icon: 'fa-share-nodes', label: 'Social Media', pmOnly: false },
+    { id: 'press', icon: 'fa-newspaper', label: 'Press Releases', pmOnly: false },
+    { id: 'wordpress', icon: 'fa-wordpress', label: 'WordPress Projects', pmOnly: false },
+    { id: 'reports', icon: 'fa-chart-line', label: 'Reports', pmOnly: false },
+    { id: 'dataforseo', icon: 'fa-database', label: 'DataForSEO', pmOnly: false },
+    { id: 'onboarding', icon: 'fa-clipboard-list', label: 'Onboarding', pmOnly: false },
+    { id: 'team', icon: 'fa-user-shield', label: 'Team Management', pmOnly: true },
   ];
+  const links = allLinks.filter(l => !l.pmOnly || isPM());
+  const initials = u?.avatar_initials || (u?.full_name?.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()) || '?';
+  const avatarColour = u?.avatar_colour || '#2563eb';
+  const roleLabel = u?.role === 'project_manager' ? 'Project Manager' : 'Project Executor';
+
   return `
     <aside class="w-64 bg-gradient-to-b from-blue-950 to-blue-900 flex flex-col flex-shrink-0 overflow-y-auto">
       <div class="p-5 border-b border-white/10 flex-shrink-0">
@@ -151,7 +185,7 @@ function renderSidebar() {
           </div>
         </div>
       </div>
-      <nav class="flex-1 p-3 space-y-0.5">
+      <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
         ${links.map(l => `
           <button onclick="navigate('${l.id}')" class="flex items-center gap-3 px-4 py-2.5 rounded-xl w-full text-left transition cursor-pointer ${state.page === l.id ? 'text-white bg-white/20' : 'text-blue-200 hover:text-white hover:bg-white/10'}">
             <i class="fas ${l.icon} w-4 text-center" style="color:inherit"></i>
@@ -159,10 +193,23 @@ function renderSidebar() {
           </button>
         `).join('')}
       </nav>
-      <div class="p-4 border-t border-white/10 flex-shrink-0">
-        <div class="flex items-center gap-2 text-xs text-blue-300">
+      <!-- User profile + logout -->
+      <div class="p-3 border-t border-white/10 flex-shrink-0 space-y-2">
+        <div class="flex items-center gap-2 text-xs text-blue-300 px-1">
           <div class="w-2 h-2 rounded-full ${state.dataforseoStatus?.connected ? 'bg-green-400' : 'bg-yellow-400'}"></div>
           DataForSEO: ${state.dataforseoStatus?.connected ? '<span class="text-green-300">Live</span>' : '<span class="text-yellow-300">Demo</span>'}
+        </div>
+        <div class="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:${avatarColour}">
+            ${initials}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-white text-xs font-semibold truncate">${u?.full_name || 'Team Member'}</div>
+            <div class="text-blue-300 text-xs truncate">${roleLabel}</div>
+          </div>
+          <button onclick="handleLogout()" class="text-blue-300 hover:text-white transition flex-shrink-0" title="Sign out">
+            <i class="fas fa-sign-out-alt text-sm"></i>
+          </button>
         </div>
       </div>
     </aside>
@@ -178,6 +225,7 @@ function renderTopBar() {
     wordpress: 'WordPress Projects', reports: 'Performance Reports',
     dataforseo: 'DataForSEO Tools',
     onboarding: 'Client Onboarding',
+    team: 'Team Management',
     onboarding_detail: state.selectedOnboarding?.company_name ? `Onboarding – ${state.selectedOnboarding.company_name}` : 'Onboarding Detail',
     client_detail: state.selectedClient?.company_name || 'Client Detail',
     campaign_detail: state.selectedCampaign?.name || 'Campaign Detail',
@@ -185,6 +233,34 @@ function renderTopBar() {
     edit_client: `Edit – ${state.editingClient?.company_name || ''}`,
     wordpress_detail: state.selectedWpProject?.project_name || 'WordPress Project',
   };
+  const addButtons = {
+    clients: `<button onclick="navigate('new_client')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Client</button>`,
+    proposals: `<button onclick="navigate('new_proposal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Proposal</button>`,
+    campaigns: `<button onclick="openModal('new_campaign_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Campaign</button>`,
+    keywords: `<button onclick="openModal('new_keyword_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Keywords</button>`,
+    llm: `<button onclick="openModal('new_llm_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Prompt</button>`,
+    content: `<button onclick="openModal('new_content_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Content</button>`,
+    social: `<button onclick="openModal('new_social_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Post</button>`,
+    press: `<button onclick="navigate('new_press')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Press Release</button>`,
+    wordpress: `<button onclick="openModal('new_wp_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New WP Project</button>`,
+    onboarding: isPM() ? `<button onclick="openModal('new_onboarding_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Onboarding</button>` : '',
+    team: isPM() ? `<button onclick="openModal('new_user_modal')" class="btn-primary"><i class="fas fa-user-plus mr-2"></i>Add Team Member</button>` : '',
+  };
+  const u = state.currentUser;
+  const roleChip = u ? `<span class="text-xs px-2.5 py-1 rounded-full font-semibold ${u.role === 'project_manager' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${u.role === 'project_manager' ? 'Project Manager' : 'Project Executor'}</span>` : '';
+  return `
+    <header class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h1 class="text-lg font-bold text-gray-900">${titles[state.page] || state.page}</h1>
+        <p class="text-xs text-gray-400">Digital Search Group · ${new Date().toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        ${roleChip}
+        ${addButtons[state.page] || ''}
+      </div>
+    </header>
+  `;
+}
   const addButtons = {
     clients: `<button onclick="navigate('new_client')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Client</button>`,
     proposals: `<button onclick="navigate('new_proposal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Proposal</button>`,
@@ -234,9 +310,12 @@ function renderPage() {
     new_press: renderNewPressRelease,
     onboarding: renderOnboarding,
     onboarding_detail: renderOnboardingDetail,
+    team: renderTeam,
   };
   const fn = pages[state.page];
-  return fn ? fn() : `<div class="text-gray-400 text-center py-20">Page not found</div>`;
+  const content = fn ? fn() : `<div class="text-gray-400 text-center py-20">Page not found</div>`;
+  // Append change-password modal + new-user modal once per render
+  return content + renderChangePwModal() + (isPM() ? renderNewUserModal() : '');
 }
 
 // ==============================
@@ -3319,9 +3398,385 @@ async function reviewOnboardingForClient(clientId) {
 }
 
 // ==============================
+// TEAM MANAGEMENT (PM only)
+// ==============================
+function renderTeam() {
+  if (!isPM()) return `<div class="text-center py-20 text-gray-400"><i class="fas fa-lock text-4xl mb-3 block"></i><p>Project Manager access required</p></div>`;
+  if (!state.teamUsers) { loadTeamUsers(); return loading(); }
+  const users = state.teamUsers;
+  const roleColors = { project_manager: 'bg-blue-100 text-blue-700', project_executor: 'bg-purple-100 text-purple-700' };
+  const roleLabels = { project_manager: 'Project Manager', project_executor: 'Project Executor' };
+
+  return `
+    <div class="space-y-6">
+      <!-- Summary -->
+      <div class="grid grid-cols-3 gap-4">
+        <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm text-center">
+          <div class="text-3xl font-bold text-gray-800">${users.length}</div>
+          <div class="text-sm text-gray-500 mt-1">Total Team Members</div>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm text-center">
+          <div class="text-3xl font-bold text-blue-600">${users.filter(u=>u.role==='project_manager'&&u.is_active).length}</div>
+          <div class="text-sm text-gray-500 mt-1">Project Managers</div>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm text-center">
+          <div class="text-3xl font-bold text-purple-600">${users.filter(u=>u.role==='project_executor'&&u.is_active).length}</div>
+          <div class="text-sm text-gray-500 mt-1">Project Executors</div>
+        </div>
+      </div>
+
+      <!-- Role legend -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="fas fa-user-tie text-blue-600"></i>
+            <span class="font-bold text-blue-800">Project Manager</span>
+          </div>
+          <ul class="text-sm text-blue-700 space-y-1.5">
+            <li><i class="fas fa-check-circle mr-2 text-blue-400"></i>Full system access – all pages, data, and actions</li>
+            <li><i class="fas fa-check-circle mr-2 text-blue-400"></i>View billing, payments, and financial data</li>
+            <li><i class="fas fa-check-circle mr-2 text-blue-400"></i>Approve proposals and onboarding submissions</li>
+            <li><i class="fas fa-check-circle mr-2 text-blue-400"></i>Create, edit, and deactivate team members</li>
+            <li><i class="fas fa-check-circle mr-2 text-blue-400"></i>Delete clients and campaigns</li>
+          </ul>
+        </div>
+        <div class="bg-purple-50 border border-purple-100 rounded-xl p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="fas fa-user-cog text-purple-600"></i>
+            <span class="font-bold text-purple-800">Project Executor</span>
+          </div>
+          <ul class="text-sm text-purple-700 space-y-1.5">
+            <li><i class="fas fa-check-circle mr-2 text-purple-400"></i>View and update clients, campaigns, and tasks</li>
+            <li><i class="fas fa-check-circle mr-2 text-purple-400"></i>Create and update content, social posts, press releases</li>
+            <li><i class="fas fa-check-circle mr-2 text-purple-400"></i>Run rank tracking, AI visibility, and DataForSEO tools</li>
+            <li><i class="fas fa-check-circle mr-2 text-purple-400"></i>Generate and view reports</li>
+            <li><i class="fas fa-times-circle mr-2 text-purple-300"></i>No access to billing, payments, or financial data</li>
+            <li><i class="fas fa-times-circle mr-2 text-purple-300"></i>Cannot approve proposals, onboarding, or delete records</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Users table -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+          <h3 class="font-semibold text-gray-800">Team Members</h3>
+        </div>
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+            <tr>
+              <th class="px-5 py-3 text-left">Member</th>
+              <th class="px-5 py-3 text-left">Role</th>
+              <th class="px-5 py-3 text-left">Status</th>
+              <th class="px-5 py-3 text-left">Last Login</th>
+              <th class="px-5 py-3 text-left">Logins</th>
+              <th class="px-5 py-3 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            ${users.map(u => `
+              <tr class="${!u.is_active ? 'opacity-50 bg-gray-50' : 'hover:bg-blue-50/20'}">
+                <td class="px-5 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background:${u.avatar_colour||'#2563eb'}">
+                      ${u.avatar_initials || u.full_name.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div class="font-semibold text-gray-800">${u.full_name}</div>
+                      <div class="text-xs text-gray-400">${u.email}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-5 py-4">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[u.role]||'bg-gray-100 text-gray-500'}">${roleLabels[u.role]||u.role}</span>
+                  ${u.force_password_change ? '<span class="ml-1 text-xs text-orange-500" title="Must change password"><i class="fas fa-exclamation-triangle"></i></span>' : ''}
+                </td>
+                <td class="px-5 py-4">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}">${u.is_active ? 'Active' : 'Inactive'}</span>
+                </td>
+                <td class="px-5 py-4 text-gray-500 text-xs">${u.last_login_at ? ago(u.last_login_at) : 'Never'}</td>
+                <td class="px-5 py-4 text-gray-500">${u.login_count || 0}</td>
+                <td class="px-5 py-4">
+                  ${u.email !== (state.currentUser?.email) ? `
+                    <div class="flex gap-2">
+                      <button onclick="openEditUserModal(${JSON.stringify(u).replace(/"/g,'&quot;')})" class="text-xs bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg hover:bg-blue-100" title="Edit">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button onclick="toggleUserActive(${u.id}, ${u.is_active})" class="text-xs ${u.is_active ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'} px-2.5 py-1.5 rounded-lg" title="${u.is_active ? 'Deactivate' : 'Reactivate'}">
+                        <i class="fas fa-${u.is_active ? 'user-slash' : 'user-check'}"></i>
+                      </button>
+                    </div>
+                  ` : '<span class="text-xs text-gray-400">You</span>'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Audit log -->
+      <div id="auditSection">
+        <button onclick="loadAuditLog()" class="btn-secondary text-sm"><i class="fas fa-history mr-2"></i>View Audit Log</button>
+      </div>
+    </div>
+  `;
+}
+
+// ---- Change password modal ----
+function renderChangePwModal() {
+  return `
+    <div id="change_pw_modal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <h3 class="text-lg font-bold mb-1">Change Your Password</h3>
+        <p class="text-sm text-gray-500 mb-5">Choose a strong password with at least 8 characters.</p>
+        <div id="pwChangeError" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm"></div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+            <input id="cur_pw" type="password" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="Current password">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+            <input id="new_pw" type="password" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="Min. 8 characters">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+            <input id="new_pw_confirm" type="password" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="Repeat new password">
+          </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+          <button onclick="closeModal('change_pw_modal')" class="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">Cancel</button>
+          <button onclick="submitChangePw()" class="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700">Update Password</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ---- New/Edit user modals ----
+function renderNewUserModal() {
+  return `
+    <div id="new_user_modal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <h3 class="text-lg font-bold mb-5" id="userModalTitle">Add Team Member</h3>
+        <input type="hidden" id="edit_user_id" value="">
+        <div id="userModalError" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm"></div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Full Name <span class="text-red-500">*</span></label>
+            <input id="um_name" type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="e.g. Jane Smith">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-red-500">*</span></label>
+            <input id="um_email" type="email" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="jane@digitalsearchgroup.com.au">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Role <span class="text-red-500">*</span></label>
+            <select id="um_role" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm">
+              <option value="project_executor">Project Executor</option>
+              <option value="project_manager">Project Manager</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Password <span id="um_pw_note" class="text-xs text-gray-400">(required for new members)</span>
+            </label>
+            <input id="um_password" type="password" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="Min. 8 characters">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Avatar Colour</label>
+            <div class="flex gap-2">
+              ${['#2563eb','#7c3aed','#db2777','#059669','#d97706','#dc2626','#0891b2'].map(c=>`
+                <button type="button" onclick="selectAvatarColour('${c}')" id="ac_${c.replace('#','')}"
+                  class="w-7 h-7 rounded-full border-2 border-transparent hover:scale-110 transition-transform"
+                  style="background:${c}"></button>
+              `).join('')}
+            </div>
+            <input type="hidden" id="um_colour" value="#2563eb">
+          </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+          <button onclick="closeModal('new_user_modal')" class="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">Cancel</button>
+          <button onclick="saveUser()" class="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700" id="saveUserBtn">Add Member</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function selectAvatarColour(hex) {
+  document.getElementById('um_colour').value = hex;
+  document.querySelectorAll('[id^="ac_"]').forEach(el => el.style.borderColor = 'transparent');
+  const btn = document.getElementById('ac_' + hex.replace('#',''));
+  if (btn) btn.style.borderColor = '#1e293b';
+}
+
+// ---- Team actions ----
+async function loadTeamUsers() {
+  try {
+    const res = await API.get('/auth/users');
+    state.teamUsers = res.data;
+    render();
+  } catch(e) { toast('Failed to load team members', 'error'); }
+}
+
+function openEditUserModal(user) {
+  document.getElementById('userModalTitle').textContent = 'Edit Team Member';
+  document.getElementById('edit_user_id').value = user.id;
+  document.getElementById('um_name').value = user.full_name;
+  document.getElementById('um_email').value = user.email;
+  document.getElementById('um_role').value = user.role;
+  document.getElementById('um_password').value = '';
+  document.getElementById('um_colour').value = user.avatar_colour || '#2563eb';
+  document.getElementById('um_pw_note').textContent = '(leave blank to keep current)';
+  document.getElementById('saveUserBtn').textContent = 'Save Changes';
+  selectAvatarColour(user.avatar_colour || '#2563eb');
+  document.getElementById('userModalError').classList.add('hidden');
+  openModal('new_user_modal');
+}
+
+async function saveUser() {
+  const id = document.getElementById('edit_user_id').value;
+  const name = document.getElementById('um_name').value.trim();
+  const email = document.getElementById('um_email').value.trim();
+  const role = document.getElementById('um_role').value;
+  const pw = document.getElementById('um_password').value;
+  const colour = document.getElementById('um_colour').value;
+  const errEl = document.getElementById('userModalError');
+  errEl.classList.add('hidden');
+
+  if (!name || !email || !role) { errEl.textContent = 'Please fill in all required fields.'; errEl.classList.remove('hidden'); return; }
+  if (!id && (!pw || pw.length < 8)) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.classList.remove('hidden'); return; }
+
+  try {
+    if (id) {
+      const body = { full_name: name, role, is_active: 1, avatar_colour: colour };
+      if (pw) body.password = pw;
+      await API.put(`/auth/users/${id}`, body);
+      toast('Team member updated');
+    } else {
+      await API.post('/auth/users', { email, full_name: name, role, password: pw, avatar_colour: colour });
+      toast('Team member added');
+    }
+    closeModal('new_user_modal');
+    state.teamUsers = null;
+    navigate('team');
+  } catch(e) {
+    errEl.textContent = e?.response?.data?.error || 'Failed to save team member.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function toggleUserActive(id, currentlyActive) {
+  const action = currentlyActive ? 'deactivate' : 'reactivate';
+  if (!confirm(`${action.charAt(0).toUpperCase()+action.slice(1)} this team member?`)) return;
+  try {
+    if (currentlyActive) {
+      await API.delete(`/auth/users/${id}`);
+      toast('Team member deactivated');
+    } else {
+      await API.put(`/auth/users/${id}`, { is_active: 1 });
+      toast('Team member reactivated');
+    }
+    state.teamUsers = null;
+    navigate('team');
+  } catch(e) { toast('Failed to update user', 'error'); }
+}
+
+async function loadAuditLog() {
+  try {
+    const res = await API.get('/auth/audit');
+    const logs = res.data;
+    const html = `
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mt-4">
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+          <h3 class="font-semibold text-gray-700">Audit Log (last 100)</h3>
+          <button onclick="document.getElementById('auditSection').innerHTML='<button onclick=\\'loadAuditLog()\\' class=\\'btn-secondary text-sm\\'><i class=\\'fas fa-history mr-2\\'></i>View Audit Log</button>'" class="text-xs text-gray-400 hover:text-gray-600">Hide</button>
+        </div>
+        <div class="divide-y divide-gray-50 max-h-96 overflow-y-auto">
+          ${logs.map(l => `
+            <div class="px-5 py-3 flex items-center gap-4">
+              <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-${l.action.includes('login') ? 'sign-in-alt' : l.action.includes('user') ? 'user' : 'pen'} text-gray-400 text-xs"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-gray-700">${l.description || l.action}</div>
+                <div class="text-xs text-gray-400">${l.full_name || 'System'} · ${ago(l.created_at)}</div>
+              </div>
+              <span class="text-xs text-gray-400 flex-shrink-0">${l.action}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    document.getElementById('auditSection').innerHTML = html;
+  } catch(e) { toast('Failed to load audit log', 'error'); }
+}
+
+// ---- Change password ----
+async function submitChangePw() {
+  const cur = document.getElementById('cur_pw').value;
+  const nw = document.getElementById('new_pw').value;
+  const conf = document.getElementById('new_pw_confirm').value;
+  const errEl = document.getElementById('pwChangeError');
+  errEl.classList.add('hidden');
+
+  if (nw.length < 8) { errEl.textContent = 'New password must be at least 8 characters.'; errEl.classList.remove('hidden'); return; }
+  if (nw !== conf) { errEl.textContent = 'Passwords do not match.'; errEl.classList.remove('hidden'); return; }
+
+  try {
+    await API.post('/auth/change-password', { current_password: cur, new_password: nw });
+    closeModal('change_pw_modal');
+    toast('Password updated successfully');
+    // Update stored user to remove force_password_change flag
+    const u = state.currentUser;
+    if (u) { u.force_password_change = false; localStorage.setItem('dsg_user', JSON.stringify(u)); }
+  } catch(e) {
+    errEl.textContent = e?.response?.data?.error || 'Failed to change password.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function handleLogout() {
+  try { await API.post('/auth/logout'); } catch {}
+  localStorage.removeItem('dsg_token');
+  localStorage.removeItem('dsg_user');
+  window.location.href = '/login';
+}
+
+// ==============================
 // BOOTSTRAP
 // ==============================
 async function init() {
+  // ---- 1. Validate session ----
+  const storedToken = localStorage.getItem('dsg_token');
+  const storedUser = localStorage.getItem('dsg_user');
+  if (!storedToken) { window.location.href = '/login'; return; }
+
+  // Use stored user for instant render, then validate
+  if (storedUser) {
+    try { state.currentUser = JSON.parse(storedUser); } catch {}
+  }
+
+  try {
+    const meRes = await API.get('/auth/me');
+    state.currentUser = meRes.data;
+    localStorage.setItem('dsg_user', JSON.stringify(meRes.data));
+  } catch(e) {
+    localStorage.removeItem('dsg_token'); localStorage.removeItem('dsg_user');
+    window.location.href = '/login'; return;
+  }
+
+  // ---- 2. Force password change if needed ----
+  if (state.currentUser.force_password_change) {
+    render(); // render the SPA shell
+    setTimeout(() => openModal('change_pw_modal'), 300);
+  }
+
+  // Check URL param too (from login redirect)
+  if (new URLSearchParams(window.location.search).get('change_password')) {
+    window.history.replaceState({}, '', '/');
+    render();
+    setTimeout(() => openModal('change_pw_modal'), 300);
+  }
+
+  // ---- 3. Load core data ----
   if (!state.clients.length) {
     try {
       const [clientsRes, campaignsRes, dfsRes] = await Promise.all([

@@ -17,6 +17,7 @@ import { paymentsRoutes } from './routes/payments'
 import { wordpressRoutes } from './routes/wordpress'
 import { socialRoutes, pressReleaseRoutes } from './routes/social-press'
 import { onboardingRoutes } from './routes/onboarding'
+import { authRoutes, getSessionUser, getTokenFromRequest, hasPermission } from './routes/auth'
 
 type Bindings = {
   DB: D1Database
@@ -37,6 +38,38 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.use('*', logger())
 app.use('/api/*', cors())
 
+// -------------------------------------------------------
+// Auth routes (public – no session required)
+// -------------------------------------------------------
+app.route('/api/auth', authRoutes)
+
+// -------------------------------------------------------
+// Global session middleware – protects all /api/* routes
+// except /api/auth/* which are public
+// -------------------------------------------------------
+app.use('/api/*', async (c, next) => {
+  // Auth routes are exempt
+  if (c.req.path.startsWith('/api/auth')) return next()
+  const token = getTokenFromRequest(c.req.raw)
+  const user = await getSessionUser(c.env.DB, token)
+  if (!user) return c.json({ error: 'Unauthorised – please log in', code: 'UNAUTHENTICATED' }, 401)
+  // Attach user to context variable for downstream routes
+  c.set('currentUser' as any, user)
+  return next()
+})
+
+// -------------------------------------------------------
+// Role enforcement helpers (used by route handlers)
+// -------------------------------------------------------
+// PM-only routes: payments, user management, billing
+const pmOnly = async (c: any, next: any) => {
+  const user = c.get('currentUser' as any) as any
+  if (!user || user.role !== 'project_manager') {
+    return c.json({ error: 'This action requires Project Manager access', code: 'FORBIDDEN' }, 403)
+  }
+  return next()
+}
+
 // API routes
 app.route('/api/clients', clientsRoutes)
 app.route('/api/proposals', proposalsRoutes)
@@ -48,11 +81,22 @@ app.route('/api/content', contentRoutes)
 app.route('/api/reports', reportsRoutes)
 app.route('/api/dashboard', dashboardRoutes)
 app.route('/api/dataforseo', dataforseoRoutes)
+app.use('/api/payments/*', pmOnly)
 app.route('/api/payments', paymentsRoutes)
 app.route('/api/wordpress', wordpressRoutes)
 app.route('/api/social', socialRoutes)
 app.route('/api/press-releases', pressReleaseRoutes)
 app.route('/api/onboarding', onboardingRoutes)
+
+// -------------------------------------------------------
+// GET /login – login page (always public)
+// GET / – SPA (protected; redirects to /login if no session)
+// -------------------------------------------------------
+app.get('/login', (c) => c.html(getLoginPageHTML()))
+app.post('/login', async (c) => {
+  // Handled by frontend JS posting to /api/auth/login
+  return c.redirect('/login')
+})
 
 // Public proposal approval page
 app.get('/proposals/approve/:token', async (c) => {
@@ -184,8 +228,17 @@ app.get('/reports/view/:token', async (c) => {
   return c.html(getReportViewHTML(report))
 })
 
-// Main app - serve SPA
-app.get('*', (c) => {
+// Main app - serve SPA (protected - redirect to login if no session)
+app.get('*', async (c) => {
+  // Public paths that don't need auth
+  const path = new URL(c.req.url).pathname
+  if (path.startsWith('/proposals/') || path.startsWith('/onboarding/') || path.startsWith('/reports/') || path === '/login') {
+    return c.html(getAppHTML())
+  }
+  // Check session
+  const token = getTokenFromRequest(c.req.raw)
+  const user = await getSessionUser(c.env.DB, token)
+  if (!user) return c.redirect('/login')
   return c.html(getAppHTML())
 })
 
@@ -999,4 +1052,149 @@ loadForm();
 }
 
 export default app
+
+function getLoginPageHTML(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In – Digital Search Group</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+  <style>
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+    .fade-up { animation: fadeUp 0.4s ease both }
+    input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12) }
+    .btn-login { transition: all 0.15s; }
+    .btn-login:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(37,99,235,0.35) }
+    .btn-login:active { transform: translateY(0) }
+    .btn-login:disabled { opacity: 0.65; cursor: not-allowed }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
+
+  <!-- Background pattern -->
+  <div class="fixed inset-0 pointer-events-none" style="background-image:radial-gradient(circle at 25% 25%, rgba(37,99,235,0.15) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(99,102,241,0.1) 0%, transparent 50%)"></div>
+
+  <div class="w-full max-w-sm fade-up">
+
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-600/30">
+        <i class="fas fa-search text-white text-2xl"></i>
+      </div>
+      <h1 class="text-white text-2xl font-bold tracking-tight">Digital Search Group</h1>
+      <p class="text-blue-300 text-sm mt-1">Campaign Management System</p>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-2xl shadow-2xl shadow-black/40 p-8">
+      <h2 class="text-slate-800 text-xl font-bold mb-1">Welcome back</h2>
+      <p class="text-slate-400 text-sm mb-6">Sign in to your account to continue</p>
+
+      <div id="errorBox" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
+        <i class="fas fa-triangle-exclamation flex-shrink-0"></i>
+        <span id="errorMsg">Invalid email or password</span>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="email">Email address</label>
+          <div class="relative">
+            <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input id="email" type="email" autocomplete="email" required
+              class="w-full pl-10 pr-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm text-slate-800 bg-slate-50"
+              placeholder="you@digitalsearchgroup.com.au">
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="password">Password</label>
+          <div class="relative">
+            <i class="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input id="password" type="password" autocomplete="current-password" required
+              class="w-full pl-10 pr-10 py-2.5 border-2 border-slate-200 rounded-xl text-sm text-slate-800 bg-slate-50"
+              placeholder="••••••••">
+            <button type="button" onclick="togglePw()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <i id="pwToggleIcon" class="fas fa-eye text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="loginBtn"
+          class="btn-login w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm shadow-md">
+          <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+        </button>
+      </form>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-center text-blue-400/60 text-xs mt-6">
+      &copy; ${new Date().getFullYear()} Digital Search Group &middot; Internal System
+    </p>
+  </div>
+
+  <script>
+  function togglePw() {
+    const pw = document.getElementById('password');
+    const icon = document.getElementById('pwToggleIcon');
+    if (pw.type === 'password') { pw.type = 'text'; icon.className = 'fas fa-eye-slash text-sm'; }
+    else { pw.type = 'password'; icon.className = 'fas fa-eye text-sm'; }
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const errBox = document.getElementById('errorBox');
+    const errMsg = document.getElementById('errorMsg');
+    errBox.classList.add('hidden');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing in...';
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    try {
+      const res = await axios.post('/api/auth/login', { email, password });
+      const { token, user } = res.data;
+
+      // Store token in localStorage for SPA
+      localStorage.setItem('dsg_token', token);
+      localStorage.setItem('dsg_user', JSON.stringify(user));
+
+      // Redirect – force password change if flagged
+      if (user.force_password_change) {
+        window.location.href = '/?change_password=1';
+      } else {
+        window.location.href = '/';
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Invalid email or password. Please try again.';
+      errMsg.textContent = msg;
+      errBox.classList.remove('hidden');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Sign In';
+      // Shake animation
+      const card = errBox.closest('.bg-white');
+      card.style.animation = 'none';
+      card.style.transform = 'translateX(-6px)';
+      setTimeout(() => { card.style.transform = 'translateX(6px)'; }, 80);
+      setTimeout(() => { card.style.transform = 'translateX(0)'; card.style.transition = 'transform 0.15s'; }, 160);
+    }
+  }
+
+  // If already logged in, redirect to app
+  const stored = localStorage.getItem('dsg_token');
+  if (stored) {
+    axios.get('/api/auth/me', { headers: { Authorization: 'Bearer ' + stored } })
+      .then(() => { window.location.href = '/'; })
+      .catch(() => { localStorage.removeItem('dsg_token'); localStorage.removeItem('dsg_user'); });
+  }
+  </script>
+</body>
+</html>`
+}
+
 
