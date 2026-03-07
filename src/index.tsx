@@ -707,6 +707,13 @@ function getAppHTML(): string {
     /* Inputs — DSG violet focus */
     .input-field { width: 100%; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 0.625rem 1rem; font-size: 0.875rem; outline: none; transition: box-shadow 0.15s; }
     .input-field:focus { box-shadow: 0 0 0 2px rgba(124,92,252,0.3); border-color: #7C5CFC; }
+    /* Hide native browser spinners and clear buttons */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+    input[type=date]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+    input[type=search]::-webkit-search-cancel-button,
+    input[type=search]::-webkit-search-decoration { -webkit-appearance: none; }
 
     /* Modals */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
