@@ -1,6 +1,6 @@
 // =============================================================
 // Digital Search Group - Campaign Management System
-// Main Frontend Application
+// Comprehensive Frontend v2.0
 // =============================================================
 
 const API = axios.create({ baseURL: '/api' });
@@ -13,6 +13,7 @@ let state = {
   selectedClient: null,
   selectedCampaign: null,
   dataforseoStatus: null,
+  editingClient: null,
 };
 
 // ---- Toast ----
@@ -20,10 +21,10 @@ function toast(msg, type = 'success') {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = `toast ${type === 'error' ? 'bg-red-700' : type === 'warning' ? 'bg-yellow-700' : 'bg-gray-900'} text-white px-5 py-3 rounded-xl shadow-lg text-sm show`;
-  setTimeout(() => el.classList.remove('show'), 3000);
+  setTimeout(() => el.classList.remove('show'), 3500);
 }
 
-// ---- Badge helper ----
+// ---- Helpers ----
 function statusBadge(status) {
   const map = {
     active: ['bg-green-100 text-green-700', 'Active'],
@@ -41,8 +42,20 @@ function statusBadge(status) {
     review: ['bg-indigo-100 text-indigo-600', 'In Review'],
     published: ['bg-green-100 text-green-700', 'Published'],
     cancelled: ['bg-red-100 text-red-400', 'Cancelled'],
+    distributed: ['bg-blue-100 text-blue-700', 'Distributed'],
+    scoping: ['bg-gray-100 text-gray-600', 'Scoping'],
+    quoted: ['bg-yellow-100 text-yellow-700', 'Quoted'],
+    client_review: ['bg-indigo-100 text-indigo-600', 'Client Review'],
+    revisions: ['bg-orange-100 text-orange-600', 'Revisions'],
+    completed: ['bg-green-100 text-green-700', 'Completed'],
+    on_hold: ['bg-gray-100 text-gray-500', 'On Hold'],
+    scheduled: ['bg-blue-100 text-blue-700', 'Scheduled'],
+    live: ['bg-green-100 text-green-700', 'Live'],
+    high: ['bg-red-100 text-red-600', 'High'],
+    medium: ['bg-yellow-100 text-yellow-700', 'Medium'],
+    low: ['bg-gray-100 text-gray-500', 'Low'],
   };
-  const [cls, label] = map[status] || ['bg-gray-100 text-gray-500', status];
+  const [cls, label] = map[status] || ['bg-gray-100 text-gray-500', status || 'Unknown'];
   return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}">${label}</span>`;
 }
 
@@ -55,7 +68,7 @@ function rankChange(current, previous) {
 }
 
 function rankBadge(pos) {
-  if (!pos) return `<span class="text-gray-400 text-sm">Unranked</span>`;
+  if (!pos) return `<span class="text-gray-400 text-sm">–</span>`;
   if (pos <= 3) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-600 text-white font-bold text-sm">${pos}</span>`;
   if (pos <= 10) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white font-bold text-sm">${pos}</span>`;
   if (pos <= 30) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-500 text-white font-bold text-sm">${pos}</span>`;
@@ -66,11 +79,22 @@ function ago(dateStr) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr);
   const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
+
+function fmt(n) { return Number(n || 0).toLocaleString(); }
+function fmtCurrency(n) { return '$' + Number(n || 0).toLocaleString('en-AU', {minimumFractionDigits: 0, maximumFractionDigits: 0}); }
+
+function loading() {
+  return `<div class="flex items-center justify-center h-64"><div class="text-center text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><p class="text-sm">Loading...</p></div></div>`;
+}
+
+function openModal(id) { document.getElementById(id)?.classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
 
 // ---- Navigation ----
 function navigate(page, params = {}) {
@@ -88,7 +112,7 @@ function render() {
       ${renderSidebar()}
       <div class="flex-1 flex flex-col overflow-hidden">
         ${renderTopBar()}
-        <main class="flex-1 overflow-y-auto p-6">
+        <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
           ${renderPage()}
         </main>
       </div>
@@ -103,15 +127,20 @@ function renderSidebar() {
     { id: 'clients', icon: 'fa-users', label: 'Clients' },
     { id: 'campaigns', icon: 'fa-rocket', label: 'Campaigns' },
     { id: 'proposals', icon: 'fa-file-contract', label: 'Proposals' },
+    { id: 'payments', icon: 'fa-credit-card', label: 'Billing & Payments' },
     { id: 'keywords', icon: 'fa-magnifying-glass-chart', label: 'Rank Tracking' },
     { id: 'llm', icon: 'fa-robot', label: 'AI Visibility' },
     { id: 'content', icon: 'fa-pen-nib', label: 'Content' },
+    { id: 'social', icon: 'fa-share-nodes', label: 'Social Media' },
+    { id: 'press', icon: 'fa-newspaper', label: 'Press Releases' },
+    { id: 'wordpress', icon: 'fa-wordpress', label: 'WordPress Projects' },
     { id: 'reports', icon: 'fa-chart-line', label: 'Reports' },
     { id: 'dataforseo', icon: 'fa-database', label: 'DataForSEO' },
+    { id: 'onboarding', icon: 'fa-clipboard-list', label: 'Onboarding' },
   ];
   return `
-    <aside class="w-64 bg-gradient-to-b from-blue-950 to-blue-900 flex flex-col flex-shrink-0">
-      <div class="p-5 border-b border-white/10">
+    <aside class="w-64 bg-gradient-to-b from-blue-950 to-blue-900 flex flex-col flex-shrink-0 overflow-y-auto">
+      <div class="p-5 border-b border-white/10 flex-shrink-0">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center">
             <i class="fas fa-search text-white text-sm"></i>
@@ -122,18 +151,18 @@ function renderSidebar() {
           </div>
         </div>
       </div>
-      <nav class="flex-1 p-3 space-y-1">
+      <nav class="flex-1 p-3 space-y-0.5">
         ${links.map(l => `
-          <button onclick="navigate('${l.id}')" class="flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition cursor-pointer ${state.page === l.id ? 'text-white bg-white/20' : 'text-blue-200 hover:text-white hover:bg-white/10'}">
+          <button onclick="navigate('${l.id}')" class="flex items-center gap-3 px-4 py-2.5 rounded-xl w-full text-left transition cursor-pointer ${state.page === l.id ? 'text-white bg-white/20' : 'text-blue-200 hover:text-white hover:bg-white/10'}">
             <i class="fas ${l.icon} w-4 text-center" style="color:inherit"></i>
             <span class="text-sm" style="color:inherit">${l.label}</span>
           </button>
         `).join('')}
       </nav>
-      <div class="p-4 border-t border-white/10">
+      <div class="p-4 border-t border-white/10 flex-shrink-0">
         <div class="flex items-center gap-2 text-xs text-blue-300">
           <div class="w-2 h-2 rounded-full ${state.dataforseoStatus?.connected ? 'bg-green-400' : 'bg-yellow-400'}"></div>
-          DataForSEO: ${state.dataforseoStatus?.connected ? 'Live' : 'Demo Mode'}
+          DataForSEO: ${state.dataforseoStatus?.connected ? '<span class="text-green-300">Live</span>' : '<span class="text-yellow-300">Demo</span>'}
         </div>
       </div>
     </aside>
@@ -143,25 +172,39 @@ function renderSidebar() {
 function renderTopBar() {
   const titles = {
     dashboard: 'Dashboard', clients: 'Client Management', campaigns: 'Campaigns',
-    proposals: 'Proposals', keywords: 'Rank Tracking', llm: 'AI & LLM Visibility',
-    content: 'Content Management', reports: 'Performance Reports', dataforseo: 'DataForSEO Tools',
+    proposals: 'Proposals', payments: 'Billing & Payments',
+    keywords: 'Rank Tracking', llm: 'AI & LLM Visibility',
+    content: 'Content Management', social: 'Social Media', press: 'Press Releases',
+    wordpress: 'WordPress Projects', reports: 'Performance Reports',
+    dataforseo: 'DataForSEO Tools',
+    onboarding: 'Client Onboarding',
+    onboarding_detail: state.selectedOnboarding?.company_name ? `Onboarding – ${state.selectedOnboarding.company_name}` : 'Onboarding Detail',
     client_detail: state.selectedClient?.company_name || 'Client Detail',
     campaign_detail: state.selectedCampaign?.name || 'Campaign Detail',
     new_proposal: 'New Proposal', new_client: 'New Client',
+    edit_client: `Edit – ${state.editingClient?.company_name || ''}`,
+    wordpress_detail: state.selectedWpProject?.project_name || 'WordPress Project',
+  };
+  const addButtons = {
+    clients: `<button onclick="navigate('new_client')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Client</button>`,
+    proposals: `<button onclick="navigate('new_proposal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Proposal</button>`,
+    campaigns: `<button onclick="openModal('new_campaign_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Campaign</button>`,
+    keywords: `<button onclick="openModal('new_keyword_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Keywords</button>`,
+    llm: `<button onclick="openModal('new_llm_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Prompt</button>`,
+    content: `<button onclick="openModal('new_content_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Content</button>`,
+    social: `<button onclick="openModal('new_social_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Post</button>`,
+    press: `<button onclick="navigate('new_press')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Press Release</button>`,
+    wordpress: `<button onclick="openModal('new_wp_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New WP Project</button>`,
+    onboarding: `<button onclick="openModal('new_onboarding_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Onboarding</button>`,
   };
   return `
-    <header class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+    <header class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
       <div>
         <h1 class="text-lg font-bold text-gray-900">${titles[state.page] || state.page}</h1>
-        <p class="text-xs text-gray-400">Digital Search Group</p>
+        <p class="text-xs text-gray-400">Digital Search Group · ${new Date().toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}</p>
       </div>
       <div class="flex items-center gap-3">
-        ${state.page === 'clients' ? `<button onclick="navigate('new_client')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Client</button>` : ''}
-        ${state.page === 'proposals' ? `<button onclick="navigate('new_proposal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Proposal</button>` : ''}
-        ${state.page === 'campaigns' ? `<button onclick="openModal('new_campaign_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Campaign</button>` : ''}
-        ${state.page === 'keywords' ? `<button onclick="openModal('new_keyword_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Keywords</button>` : ''}
-        ${state.page === 'llm' ? `<button onclick="openModal('new_llm_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Prompt</button>` : ''}
-        ${state.page === 'content' ? `<button onclick="openModal('new_content_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Content</button>` : ''}
+        ${addButtons[state.page] || ''}
       </div>
     </header>
   `;
@@ -173,18 +216,27 @@ function renderPage() {
     clients: renderClients,
     campaigns: renderCampaigns,
     proposals: renderProposals,
+    payments: renderPayments,
     keywords: renderKeywords,
     llm: renderLLM,
     content: renderContent,
+    social: renderSocial,
+    press: renderPress,
+    wordpress: renderWordPress,
     reports: renderReports,
     dataforseo: renderDataForSEO,
     client_detail: renderClientDetail,
     campaign_detail: renderCampaignDetail,
     new_proposal: renderNewProposal,
     new_client: renderNewClient,
+    edit_client: renderEditClient,
+    wordpress_detail: renderWpProjectDetail,
+    new_press: renderNewPressRelease,
+    onboarding: renderOnboarding,
+    onboarding_detail: renderOnboardingDetail,
   };
   const fn = pages[state.page];
-  return fn ? fn() : '<p class="text-gray-500">Page not found</p>';
+  return fn ? fn() : `<div class="text-gray-400 text-center py-20">Page not found</div>`;
 }
 
 // ==============================
@@ -192,37 +244,30 @@ function renderPage() {
 // ==============================
 function renderDashboard() {
   const d = state.dashboardData;
-  if (!d) {
-    loadDashboard();
-    return `<div class="flex items-center justify-center h-64"><div class="text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2 text-sm">Loading...</p></div></div>`;
-  }
+  if (!d) { loadDashboard(); return loading(); }
   const { clients = {}, campaigns = {}, keywords = {}, content = {}, proposals = {} } = d;
   return `
     <div class="space-y-6">
-      <!-- MRR Header -->
       <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
-        <p class="text-blue-200 text-sm">Total Monthly Recurring Revenue</p>
-        <div class="text-4xl font-bold mt-1">$${Number(clients.total_mrr || 0).toLocaleString()}</div>
-        <div class="flex gap-6 mt-4 text-sm text-blue-200">
+        <p class="text-blue-200 text-sm font-medium">Total Monthly Recurring Revenue</p>
+        <div class="text-4xl font-bold mt-1">${fmtCurrency(clients.total_mrr)}</div>
+        <div class="flex gap-6 mt-4 text-sm text-blue-200 flex-wrap">
           <span><strong class="text-white">${clients.active || 0}</strong> Active Clients</span>
-          <span><strong class="text-white">${campaigns.active || 0}</strong> Active Campaigns</span>
           <span><strong class="text-white">${clients.prospects || 0}</strong> Prospects</span>
+          <span><strong class="text-white">${campaigns.active || 0}</strong> Active Campaigns</span>
         </div>
       </div>
 
-      <!-- Stats Grid -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         ${[
-          { icon: 'fa-magnifying-glass-chart', label: 'Keywords Tracking', val: keywords.total || 0, sub: `${keywords.top10 || 0} in Top 10`, color: 'blue' },
-          { icon: 'fa-robot', label: 'LLM Prompts', val: (d.llm_stats?.total_prompts) || 0, sub: `AI visibility tracked`, color: 'purple' },
-          { icon: 'fa-pen-nib', label: 'Content In Pipeline', val: content.in_pipeline || 0, sub: `${content.published || 0} published`, color: 'green' },
-          { icon: 'fa-file-contract', label: 'Pending Proposals', val: proposals.pending || 0, sub: `${proposals.approved || 0} approved total`, color: 'yellow' },
+          { icon: 'fa-magnifying-glass-chart', label: 'Keywords Tracking', val: keywords.total || 0, sub: `${keywords.top10 || 0} in Top 10`, color: 'blue', page: 'keywords' },
+          { icon: 'fa-robot', label: 'LLM Prompts', val: d.llm_stats?.total_prompts || 0, sub: 'AI visibility tracked', color: 'purple', page: 'llm' },
+          { icon: 'fa-pen-nib', label: 'Content In Pipeline', val: content.in_pipeline || 0, sub: `${content.published || 0} published`, color: 'green', page: 'content' },
+          { icon: 'fa-file-contract', label: 'Pending Proposals', val: proposals.pending || 0, sub: `${proposals.approved || 0} approved total`, color: 'yellow', page: 'proposals' },
         ].map(s => `
-          <div class="card">
-            <div class="flex items-center justify-between mb-3">
-              <div class="w-10 h-10 rounded-xl bg-${s.color}-100 flex items-center justify-center">
-                <i class="fas ${s.icon} text-${s.color}-600"></i>
-              </div>
+          <div class="card cursor-pointer hover:shadow-md transition" onclick="navigate('${s.page}')">
+            <div class="w-10 h-10 rounded-xl bg-${s.color}-100 flex items-center justify-center mb-3">
+              <i class="fas ${s.icon} text-${s.color}-600"></i>
             </div>
             <div class="text-2xl font-bold text-gray-900">${s.val}</div>
             <div class="text-sm text-gray-500 mt-0.5">${s.label}</div>
@@ -232,49 +277,28 @@ function renderDashboard() {
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Pending Proposals -->
         <div class="card">
-          <h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-file-contract text-blue-500 mr-2"></i>Awaiting Client Approval</h3>
-          ${(d.pending_proposals || []).length === 0 ? '<p class="text-gray-400 text-sm">No pending proposals</p>' :
-            `<div class="space-y-3">
-              ${(d.pending_proposals || []).map(p => `
-                <div class="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
-                  <div>
-                    <p class="font-medium text-sm text-gray-900">${p.company_name}</p>
-                    <p class="text-xs text-gray-500">${p.title} · $${Number(p.monthly_investment).toLocaleString()}/mo</p>
-                  </div>
-                  <div class="text-right">
-                    ${statusBadge('sent')}
-                    <p class="text-xs text-gray-400 mt-1">Sent ${ago(p.sent_at)}</p>
-                  </div>
-                </div>
-              `).join('')}
-            </div>`}
+          <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-file-contract text-blue-500"></i>Awaiting Approval</h3>
+          ${!(d.pending_proposals || []).length ? '<p class="text-gray-400 text-sm">No pending proposals</p>' :
+            `<div class="space-y-2">${(d.pending_proposals || []).map(p => `
+              <div class="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+                <div><p class="font-medium text-sm">${p.company_name}</p><p class="text-xs text-gray-500">${p.title} · ${fmtCurrency(p.monthly_investment)}/mo</p></div>
+                <div class="text-right">${statusBadge('sent')}<p class="text-xs text-gray-400 mt-1">Sent ${ago(p.sent_at)}</p></div>
+              </div>`).join('')}</div>`}
         </div>
 
-        <!-- Upcoming Content -->
         <div class="card">
-          <h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-calendar text-green-500 mr-2"></i>Upcoming Content Deadlines</h3>
-          ${(d.upcoming_content || []).length === 0 ? '<p class="text-gray-400 text-sm">No upcoming content</p>' :
-            `<div class="space-y-3">
-              ${(d.upcoming_content || []).map(ci => `
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div>
-                    <p class="font-medium text-sm text-gray-900">${ci.title}</p>
-                    <p class="text-xs text-gray-500">${ci.company_name} · ${ci.content_type.replace(/_/g,' ')}</p>
-                  </div>
-                  <div class="text-right">
-                    ${statusBadge(ci.status)}
-                    <p class="text-xs text-gray-400 mt-1">Due ${ci.due_date || 'TBD'}</p>
-                  </div>
-                </div>
-              `).join('')}
-            </div>`}
+          <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-calendar text-green-500"></i>Upcoming Content Deadlines</h3>
+          ${!(d.upcoming_content || []).length ? '<p class="text-gray-400 text-sm">No upcoming content</p>' :
+            `<div class="space-y-2">${(d.upcoming_content || []).map(ci => `
+              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div><p class="font-medium text-sm">${ci.title}</p><p class="text-xs text-gray-500">${ci.company_name} · ${(ci.content_type||'').replace(/_/g,' ')}</p></div>
+                <div class="text-right">${statusBadge(ci.status)}<p class="text-xs text-gray-400 mt-1">Due ${ci.due_date || 'TBD'}</p></div>
+              </div>`).join('')}</div>`}
         </div>
 
-        <!-- Recent Activity -->
         <div class="card lg:col-span-2">
-          <h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-clock text-gray-400 mr-2"></i>Recent Activity</h3>
+          <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-clock text-gray-400"></i>Recent Activity</h3>
           <div class="space-y-2">
             ${(d.recent_activity || []).map(a => `
               <div class="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
@@ -295,7 +319,12 @@ function renderDashboard() {
 }
 
 function activityIcon(type) {
-  const map = { client_created: 'fa-user-plus', proposal_created: 'fa-file-plus', proposal_sent: 'fa-paper-plane', proposal_approved: 'fa-check-circle' };
+  const map = {
+    client_created: 'fa-user-plus', client_updated: 'fa-user-edit',
+    proposal_created: 'fa-file-plus', proposal_sent: 'fa-paper-plane',
+    proposal_approved: 'fa-check-circle', payment_received: 'fa-credit-card',
+    wp_project_created: 'fa-wordpress', rank_tracked: 'fa-chart-line',
+  };
   return map[type] || 'fa-circle-dot';
 }
 
@@ -303,15 +332,12 @@ function activityIcon(type) {
 // CLIENTS
 // ==============================
 function renderClients() {
-  if (!state.clients.length) {
-    loadClients();
-    return loading();
-  }
+  if (!state.clients.length) { loadClients(); return loading(); }
   return `
     <div class="space-y-4">
-      <div class="flex gap-3">
+      <div class="flex gap-3 flex-wrap">
         <input type="text" id="clientSearch" placeholder="Search clients..." class="input-field max-w-xs" oninput="filterClients(this.value)">
-        <select id="clientStatusFilter" class="input-field max-w-xs" onchange="filterClients()">
+        <select id="clientStatusFilter" class="input-field w-40" onchange="filterClients()">
           <option value="">All Statuses</option>
           <option value="active">Active</option>
           <option value="prospect">Prospect</option>
@@ -327,23 +353,54 @@ function renderClients() {
 }
 
 function renderClientCards(clients) {
-  return clients.map(cl => `
-    <div class="card hover:shadow-md transition cursor-pointer" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">
+  const obColors = {
+    not_sent: 'text-gray-400',
+    sent: 'text-blue-500',
+    in_progress: 'text-purple-500',
+    submitted: 'text-orange-500',
+    approved: 'text-green-500',
+  };
+  const obIcons = {
+    not_sent: 'fa-clipboard',
+    sent: 'fa-envelope',
+    in_progress: 'fa-pen-to-square',
+    submitted: 'fa-hourglass-half',
+    approved: 'fa-circle-check',
+  };
+  const obLabels = {
+    not_sent: 'Not Onboarded',
+    sent: 'Onboarding Sent',
+    in_progress: 'Onboarding In Progress',
+    submitted: 'Onboarding Submitted',
+    approved: 'Onboarded',
+  };
+  return clients.map(cl => {
+    const obStatus = cl.onboarding_status || 'not_sent';
+    return `
+    <div class="card hover:shadow-md transition">
       <div class="flex items-start justify-between mb-3">
-        <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-700">
+        <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-700 cursor-pointer" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">
           ${cl.company_name.charAt(0)}
         </div>
-        ${statusBadge(cl.status)}
+        <div class="flex items-center gap-2">
+          ${statusBadge(cl.status)}
+          <button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' class="text-gray-300 hover:text-blue-500 transition p-1"><i class="fas fa-edit text-xs"></i></button>
+        </div>
       </div>
-      <h3 class="font-semibold text-gray-900">${cl.company_name}</h3>
+      <h3 class="font-semibold text-gray-900 cursor-pointer hover:text-blue-600" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">${cl.company_name}</h3>
       <p class="text-sm text-gray-500 mt-0.5">${cl.website}</p>
-      <div class="mt-3 pt-3 border-t border-gray-50 flex gap-4 text-xs text-gray-500">
+      <p class="text-xs text-gray-400 mt-0.5">${cl.industry || ''} ${cl.location ? '· ' + cl.location : ''}</p>
+      <div class="mt-3 pt-3 border-t border-gray-50 flex gap-3 text-xs text-gray-500 flex-wrap items-center">
         <span><i class="fas fa-rocket mr-1"></i>${cl.campaign_count || 0} campaigns</span>
         <span><i class="fas fa-key mr-1"></i>${cl.keyword_count || 0} keywords</span>
-        ${cl.monthly_budget ? `<span class="ml-auto font-semibold text-gray-700">$${Number(cl.monthly_budget).toLocaleString()}/mo</span>` : ''}
+        ${cl.monthly_budget ? `<span class="ml-auto font-semibold text-gray-700">${fmtCurrency(cl.monthly_budget)}/mo</span>` : ''}
+      </div>
+      <div class="mt-2 flex items-center gap-1.5 text-xs ${obColors[obStatus] || 'text-gray-400'}">
+        <i class="fas ${obIcons[obStatus] || 'fa-clipboard'} text-xs"></i>
+        <span>${obLabels[obStatus] || 'Not Onboarded'}</span>
       </div>
     </div>
-  `).join('');
+  `;}).join('');
 }
 
 // ==============================
@@ -352,232 +409,384 @@ function renderClientCards(clients) {
 function renderClientDetail() {
   const cl = state.selectedClient;
   if (!cl) return '<p>No client selected</p>';
-  if (!cl.campaigns) {
-    loadClientDetail(cl.id);
-    return loading();
-  }
+  if (!cl.campaigns) { loadClientDetail(cl.id); return loading(); }
+
+  // Onboarding status banner
+  const obStatus = cl.onboarding_status || 'not_sent';
+  const obBannerMap = {
+    not_sent: { cls: 'bg-gray-50 border-gray-200 text-gray-600', icon: 'fa-clipboard', msg: 'Onboarding form has not been sent to this client yet.', btn: true, btnLabel: 'Create & Send Onboarding', btnAction: `createOnboardingForClient(${cl.id})` },
+    sent: { cls: 'bg-blue-50 border-blue-200 text-blue-700', icon: 'fa-envelope-open', msg: 'Onboarding form sent – awaiting client to start.', btn: true, btnLabel: 'Resend Reminder', btnAction: `resendOnboardingForClient(${cl.id})` },
+    in_progress: { cls: 'bg-purple-50 border-purple-200 text-purple-700', icon: 'fa-pen-to-square', msg: 'Client is currently completing the onboarding form.', btn: true, btnLabel: 'Send Reminder', btnAction: `resendOnboardingForClient(${cl.id})` },
+    submitted: { cls: 'bg-orange-50 border-orange-200 text-orange-700', icon: 'fa-hourglass-half', msg: 'Onboarding submitted by client – awaiting your review and approval.', btn: true, btnLabel: 'Review & Approve', btnAction: `reviewOnboardingForClient(${cl.id})` },
+    approved: { cls: 'bg-green-50 border-green-200 text-green-700', icon: 'fa-circle-check', msg: 'Onboarding complete. All campaign information has been collected.', btn: false },
+  };
+  const ob = obBannerMap[obStatus] || obBannerMap.not_sent;
+  const isBlocked = ['not_sent','sent','in_progress'].includes(obStatus);
+
   return `
     <div class="space-y-6">
-      <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
-        <button onclick="navigate('clients')" class="hover:text-blue-600">Clients</button>
+      <div class="flex items-center gap-2 text-sm text-gray-500">
+        <button onclick="navigate('clients')" class="hover:text-blue-600"><i class="fas fa-arrow-left mr-1"></i>Clients</button>
         <i class="fas fa-chevron-right text-xs"></i>
         <span class="text-gray-900 font-medium">${cl.company_name}</span>
       </div>
 
-      <!-- Client Header -->
+      <!-- Onboarding Status Banner -->
+      <div class="border rounded-xl px-5 py-4 flex items-center gap-4 ${ob.cls}">
+        <i class="fas ${ob.icon} text-lg flex-shrink-0"></i>
+        <div class="flex-1">
+          <span class="font-semibold text-sm">Onboarding: </span>
+          <span class="text-sm">${ob.msg}</span>
+          ${isBlocked ? '<span class="ml-2 text-xs font-bold uppercase tracking-wide opacity-70">⚠ Campaign tasks on hold</span>' : ''}
+        </div>
+        ${ob.btn ? `<button onclick="${ob.btnAction}" class="flex-shrink-0 text-xs font-semibold px-4 py-2 rounded-lg border border-current hover:opacity-80 transition-opacity">${ob.btnLabel}</button>` : ''}
+      </div>
+
+      <!-- Client Header Card -->
       <div class="card">
-        <div class="flex items-start justify-between">
+        <div class="flex items-start justify-between flex-wrap gap-4">
           <div class="flex gap-4 items-center">
-            <div class="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl">
+            <div class="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-2xl">
               ${cl.company_name.charAt(0)}
             </div>
             <div>
               <h2 class="text-xl font-bold text-gray-900">${cl.company_name}</h2>
               <a href="https://${cl.website}" target="_blank" class="text-blue-600 text-sm hover:underline">${cl.website}</a>
-              <div class="flex gap-3 mt-1 text-sm text-gray-500">
-                <span>${cl.industry || ''}</span>
+              <div class="flex gap-3 mt-1 text-sm text-gray-500 flex-wrap">
+                ${cl.industry ? `<span>${cl.industry}</span>` : ''}
                 ${cl.location ? `<span>· ${cl.location}</span>` : ''}
+                ${cl.account_manager ? `<span>· AM: ${cl.account_manager}</span>` : ''}
               </div>
             </div>
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
             ${statusBadge(cl.status)}
-            <button onclick="openEditClientModal()" class="btn-secondary"><i class="fas fa-edit mr-1"></i>Edit</button>
-            <button onclick="navigate('new_proposal', {selectedClient: state.selectedClient})" class="btn-primary">
+            <button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' class="btn-secondary text-sm"><i class="fas fa-edit mr-1"></i>Edit Client</button>
+            <button onclick="navigate('new_proposal', {selectedClient: state.selectedClient})" class="btn-primary text-sm">
               <i class="fas fa-file-plus mr-1"></i>New Proposal
             </button>
           </div>
         </div>
-        <div class="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-gray-100">
-          <div><p class="text-xs text-gray-400">Contact</p><p class="font-medium text-sm">${cl.contact_name}</p><p class="text-xs text-gray-500">${cl.contact_email}</p></div>
-          <div><p class="text-xs text-gray-400">Monthly Budget</p><p class="font-bold text-lg text-blue-600">$${Number(cl.monthly_budget || 0).toLocaleString()}</p></div>
-          <div><p class="text-xs text-gray-400">Client Since</p><p class="font-medium text-sm">${new Date(cl.created_at).toLocaleDateString('en-AU', {month:'short',year:'numeric'})}</p></div>
+
+        <!-- Contact & Financial Info Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">
+          <div>
+            <p class="text-xs text-gray-400">Primary Contact</p>
+            <p class="font-medium text-sm">${cl.contact_name || '–'}</p>
+            <p class="text-xs text-gray-500">${cl.contact_email}</p>
+            ${cl.contact_phone ? `<p class="text-xs text-gray-500">${cl.contact_phone}</p>` : ''}
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Monthly Retainer</p>
+            <p class="font-bold text-xl text-blue-600">${fmtCurrency(cl.monthly_budget)}</p>
+            ${cl.contract_start ? `<p class="text-xs text-gray-400">Since ${cl.contract_start}</p>` : ''}
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">ABN</p>
+            <p class="font-medium text-sm">${cl.abn || '–'}</p>
+            <p class="text-xs text-gray-400 mt-1">CMS</p>
+            <p class="font-medium text-sm">${cl.cms_platform || 'WordPress'}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Client Since</p>
+            <p class="font-medium text-sm">${new Date(cl.created_at).toLocaleDateString('en-AU', {month:'short',year:'numeric'})}</p>
+            ${cl.referral_source ? `<p class="text-xs text-gray-400 mt-1">Via: ${cl.referral_source}</p>` : ''}
+          </div>
         </div>
+
+        <!-- Digital Properties -->
+        ${(cl.ga4_property_id || cl.gsc_property || cl.google_business_id) ? `
+        <div class="mt-4 pt-4 border-t border-gray-100">
+          <p class="text-xs font-medium text-gray-500 mb-2">Digital Properties</p>
+          <div class="flex gap-4 flex-wrap text-xs text-gray-600">
+            ${cl.ga4_property_id ? `<span><i class="fab fa-google mr-1"></i>GA4: ${cl.ga4_property_id}</span>` : ''}
+            ${cl.gsc_property ? `<span><i class="fas fa-search mr-1"></i>GSC: ${cl.gsc_property}</span>` : ''}
+            ${cl.google_business_id ? `<span><i class="fas fa-map-marker-alt mr-1"></i>GBP: ${cl.google_business_id}</span>` : ''}
+          </div>
+        </div>` : ''}
       </div>
 
       <!-- Active Campaigns -->
       <div class="card">
-        <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-rocket text-blue-500 mr-2"></i>Active Campaigns</h3>
-        ${(cl.campaigns || []).length === 0 ? '<p class="text-gray-400 text-sm">No campaigns yet</p>' :
-          `<div class="space-y-3">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-rocket text-blue-500 mr-2"></i>Active Campaigns</h3>
+          <button onclick="openModal('new_campaign_modal')" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>New Campaign</button>
+        </div>
+        ${!(cl.campaigns || []).length ? '<p class="text-gray-400 text-sm">No campaigns yet</p>' :
+          `<div class="space-y-2">
             ${(cl.campaigns || []).map(ca => `
               <div class="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition"
                 onclick="navigate('campaign_detail', {selectedCampaign: ${JSON.stringify(ca).replace(/"/g,'&quot;')}})">
                 <div>
                   <p class="font-medium text-gray-900">${ca.name}</p>
-                  <p class="text-xs text-gray-500">${ca.campaign_type.replace(/_/g,' ')} · Started ${ca.start_date}</p>
+                  <p class="text-xs text-gray-500">${ca.campaign_type?.replace(/_/g,' ')} · Started ${ca.start_date}</p>
                 </div>
                 <div class="flex items-center gap-3">
-                  <span class="font-semibold text-gray-700">$${Number(ca.monthly_investment).toLocaleString()}/mo</span>
+                  <span class="font-semibold text-gray-700">${fmtCurrency(ca.monthly_investment)}/mo</span>
                   ${statusBadge(ca.status)}
                   <i class="fas fa-chevron-right text-gray-300"></i>
                 </div>
-              </div>
-            `).join('')}
+              </div>`).join('')}
           </div>`}
       </div>
 
       <!-- Proposals -->
       <div class="card">
-        <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-file-contract text-green-500 mr-2"></i>Proposals</h3>
-        ${(cl.proposals || []).length === 0 ? '<p class="text-gray-400 text-sm">No proposals yet</p>' :
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-file-contract text-green-500 mr-2"></i>Proposals</h3>
+          <button onclick="navigate('new_proposal', {selectedClient: state.selectedClient})" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>New Proposal</button>
+        </div>
+        ${!(cl.proposals || []).length ? '<p class="text-gray-400 text-sm">No proposals yet</p>' :
           `<div class="space-y-2">
             ${(cl.proposals || []).map(p => `
               <div class="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
                 <div>
-                  <p class="font-medium text-sm text-gray-900">${p.title}</p>
-                  <p class="text-xs text-gray-400">$${Number(p.monthly_investment).toLocaleString()}/mo · ${p.contract_length}mo · ${p.created_at?.slice(0,10)}</p>
+                  <p class="font-medium text-sm">${p.title}</p>
+                  <p class="text-xs text-gray-400">${fmtCurrency(p.monthly_investment)}/mo · ${p.contract_length}mo · ${p.created_at?.slice(0,10)}</p>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   ${statusBadge(p.status)}
                   ${p.status === 'draft' ? `<button onclick="sendProposal(${p.id})" class="btn-secondary text-xs">Send</button>` : ''}
                   ${p.status === 'sent' ? `<button onclick="copyApprovalLink('${p.approval_token}')" class="btn-secondary text-xs"><i class="fas fa-link mr-1"></i>Copy Link</button>` : ''}
+                  ${p.status === 'approved' && !p.paid_at ? `<button onclick="activatePayment(${p.id})" class="btn-success text-xs"><i class="fas fa-bolt mr-1"></i>Activate</button>` : ''}
                 </div>
-              </div>
-            `).join('')}
+              </div>`).join('')}
           </div>`}
       </div>
+
+      <!-- Payments / Billing -->
+      ${(cl.payments || []).length ? `
+      <div class="card">
+        <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-credit-card text-purple-500 mr-2"></i>Recent Payments</h3>
+        <div class="space-y-2">
+          ${cl.payments.map(pmt => `
+            <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              <div><p class="text-sm font-medium">${pmt.description || 'Payment'}</p>
+              <p class="text-xs text-gray-400">${pmt.invoice_number || ''} · ${pmt.paid_at?.slice(0,10) || pmt.created_at?.slice(0,10)}</p></div>
+              <div class="text-right"><p class="font-semibold text-gray-900">${fmtCurrency(pmt.amount)}</p>${statusBadge(pmt.status)}</div>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      ${renderNewCampaignModal()}
     </div>
   `;
 }
 
 // ==============================
-// CAMPAIGN DETAIL
+// NEW CLIENT
 // ==============================
-function renderCampaignDetail() {
-  const ca = state.selectedCampaign;
-  if (!ca) return '<p>No campaign selected</p>';
-  if (!ca.keywords && !ca._loaded) {
-    loadCampaignDetail(ca.id);
-    return loading();
-  }
-  const kws = ca.keywords || [];
-  const top3 = kws.filter(k => k.current_rank && k.current_rank <= 3).length;
-  const top10 = kws.filter(k => k.current_rank && k.current_rank <= 10).length;
-  const llmPrompts = ca.llm_prompts || [];
+function renderNewClient() {
+  return renderClientForm(null, false);
+}
 
+function renderEditClient() {
+  const cl = state.editingClient;
+  if (!cl) return '<p>No client selected for editing</p>';
+  return renderClientForm(cl, true);
+}
+
+function renderClientForm(cl, isEdit) {
+  const v = (field, def = '') => cl ? (cl[field] ?? def) : def;
   return `
-    <div class="space-y-6">
-      <div class="flex items-center gap-2 text-sm text-gray-500">
-        <button onclick="navigate('campaigns')" class="hover:text-blue-600">Campaigns</button>
-        <i class="fas fa-chevron-right text-xs"></i>
-        <span class="text-gray-900 font-medium">${ca.name}</span>
-      </div>
-
+    <div class="max-w-4xl space-y-6">
+      <button onclick="${isEdit ? "navigate('client_detail', {selectedClient: state.editingClient})" : "navigate('clients')"}" class="text-sm text-gray-500 hover:text-blue-600">
+        <i class="fas fa-arrow-left mr-1"></i>Back
+      </button>
       <div class="card">
-        <div class="flex items-start justify-between">
-          <div>
-            <h2 class="text-xl font-bold text-gray-900">${ca.name}</h2>
-            <p class="text-sm text-gray-500">${ca.company_name || ''} · ${ca.campaign_type?.replace(/_/g,' ')} · Started ${ca.start_date}</p>
-          </div>
-          <div class="flex gap-2 items-center">
-            <span class="font-bold text-xl text-blue-600">$${Number(ca.monthly_investment).toLocaleString()}<span class="text-sm text-gray-400">/mo</span></span>
-            ${statusBadge(ca.status)}
-          </div>
-        </div>
-        <div class="grid grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">
-          ${[
-            ['Keywords', kws.length, 'fa-key'],
-            ['Top 3', top3, 'fa-trophy'],
-            ['Top 10', top10, 'fa-star'],
-            ['LLM Prompts', llmPrompts.length, 'fa-robot'],
-          ].map(([l, v, i]) => `
-            <div class="text-center">
-              <div class="text-2xl font-bold text-gray-900">${v}</div>
-              <div class="text-xs text-gray-400 mt-1"><i class="fas ${i} mr-1"></i>${l}</div>
+        <h2 class="text-lg font-bold text-gray-900 mb-5">${isEdit ? 'Edit Client: ' + cl.company_name : 'Add New Client'}</h2>
+
+        <!-- Section: Company -->
+        <div class="mb-6">
+          <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 pb-1 border-b">Company Information</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2 md:col-span-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
+              <input type="text" id="cl_company_name" class="input-field" value="${v('company_name')}" placeholder="Apex Plumbing Services">
             </div>
-          `).join('')}
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Website *</label>
+              <input type="text" id="cl_website" class="input-field" value="${v('website')}" placeholder="apexplumbing.com.au">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+              <input type="text" id="cl_industry" class="input-field" value="${v('industry')}" placeholder="Trades & Home Services">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">ABN</label>
+              <input type="text" id="cl_abn" class="input-field" value="${v('abn')}" placeholder="12 345 678 901">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select id="cl_status" class="input-field">
+                ${['prospect','active','paused','churned'].map(s => `<option value="${s}" ${v('status','prospect') === s ? 'selected' : ''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- Track Now Buttons -->
-      <div class="flex gap-3">
-        <button onclick="trackRankings('${ca.id}')" class="btn-primary">
-          <i class="fas fa-sync-alt mr-2"></i>Track Rankings Now
-        </button>
-        <button onclick="trackLLM('${ca.id}')" class="btn-secondary">
-          <i class="fas fa-robot mr-2"></i>Check LLM Mentions
-        </button>
-        <button onclick="generateReport('${ca.id}')" class="btn-success">
-          <i class="fas fa-chart-line mr-2"></i>Generate Report
-        </button>
-      </div>
+        <!-- Section: Address -->
+        <div class="mb-6">
+          <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 pb-1 border-b">Address</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+              <input type="text" id="cl_address" class="input-field" value="${v('address')}" placeholder="123 Main Street">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">City/Suburb</label>
+              <input type="text" id="cl_city" class="input-field" value="${v('city')}" placeholder="Sydney">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
+              <select id="cl_state" class="input-field">
+                ${['NSW','VIC','QLD','WA','SA','TAS','ACT','NT'].map(s => `<option value="${s}" ${v('state') === s ? 'selected' : ''}>${s}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
+              <input type="text" id="cl_postcode" class="input-field" value="${v('postcode')}" placeholder="2000">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+              <input type="text" id="cl_country" class="input-field" value="${v('country','Australia')}">
+            </div>
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Location (Display)</label>
+              <input type="text" id="cl_location" class="input-field" value="${v('location')}" placeholder="Sydney, NSW, Australia">
+            </div>
+          </div>
+        </div>
 
-      <!-- Keywords Table -->
-      <div class="card">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900"><i class="fas fa-magnifying-glass-chart text-blue-500 mr-2"></i>Keyword Rankings</h3>
-          <button onclick="openModal('new_keyword_modal')" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>Add Keywords</button>
+        <!-- Section: Primary Contact -->
+        <div class="mb-6">
+          <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 pb-1 border-b">Primary Contact</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Contact Name *</label>
+              <input type="text" id="cl_contact_name" class="input-field" value="${v('contact_name')}" placeholder="James Mitchell">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Contact Email *</label>
+              <input type="email" id="cl_contact_email" class="input-field" value="${v('contact_email')}" placeholder="james@company.com">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input type="tel" id="cl_contact_phone" class="input-field" value="${v('contact_phone')}" placeholder="+61 2 9000 0000">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Secondary Contact Name</label>
+              <input type="text" id="cl_secondary_contact_name" class="input-field" value="${v('secondary_contact_name')}">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Secondary Contact Email</label>
+              <input type="email" id="cl_secondary_contact_email" class="input-field" value="${v('secondary_contact_email')}">
+            </div>
+          </div>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
-                <th class="px-3 py-2 rounded-l-lg">Keyword</th>
-                <th class="px-3 py-2 text-center">Current</th>
-                <th class="px-3 py-2 text-center">Previous</th>
-                <th class="px-3 py-2 text-center">Change</th>
-                <th class="px-3 py-2">Group</th>
-                <th class="px-3 py-2">Vol.</th>
-                <th class="px-3 py-2 rounded-r-lg">Priority</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-              ${kws.length === 0 ? '<tr><td colspan="7" class="px-3 py-8 text-center text-gray-400">No keywords yet</td></tr>' :
-                kws.map(kw => `
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-3">
-                      <div class="font-medium text-gray-900">${kw.keyword}</div>
-                      ${kw.target_url ? `<div class="text-xs text-gray-400 truncate max-w-xs">${kw.target_url}</div>` : ''}
-                    </td>
-                    <td class="px-3 py-3 text-center">${rankBadge(kw.current_rank)}</td>
-                    <td class="px-3 py-3 text-center text-gray-400 text-sm">${kw.previous_rank || '–'}</td>
-                    <td class="px-3 py-3 text-center">${rankChange(kw.current_rank, kw.previous_rank)}</td>
-                    <td class="px-3 py-3 text-xs text-gray-500">${kw.keyword_group || '–'}</td>
-                    <td class="px-3 py-3 text-xs text-gray-500">${kw.monthly_search_volume ? kw.monthly_search_volume.toLocaleString() : '–'}</td>
-                    <td class="px-3 py-3">${statusBadge(kw.priority)}</td>
-                  </tr>
-                `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      <!-- LLM Prompts -->
-      <div class="card">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900"><i class="fas fa-robot text-purple-500 mr-2"></i>AI/LLM Visibility Tracking</h3>
-          <button onclick="openModal('new_llm_modal')" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>Add Prompt</button>
+        <!-- Section: Engagement -->
+        <div class="mb-6">
+          <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 pb-1 border-b">Engagement Details</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Budget ($)</label>
+              <input type="number" id="cl_monthly_budget" class="input-field" value="${v('monthly_budget',0)}" placeholder="2500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Account Manager</label>
+              <input type="text" id="cl_account_manager" class="input-field" value="${v('account_manager')}" placeholder="Your name">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Contract Start</label>
+              <input type="date" id="cl_contract_start" class="input-field" value="${v('contract_start')}">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Contract End</label>
+              <input type="date" id="cl_contract_end" class="input-field" value="${v('contract_end')}">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Referral Source</label>
+              <input type="text" id="cl_referral_source" class="input-field" value="${v('referral_source')}" placeholder="Google, Referral, Cold Outreach">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+              <select id="cl_timezone" class="input-field">
+                ${['Australia/Sydney','Australia/Melbourne','Australia/Brisbane','Australia/Perth','Australia/Adelaide','Australia/Hobart'].map(tz => `<option value="${tz}" ${v('timezone','Australia/Sydney') === tz ? 'selected' : ''}>${tz}</option>`).join('')}
+              </select>
+            </div>
+          </div>
         </div>
-        ${llmPrompts.length === 0 ? '<p class="text-gray-400 text-sm">No LLM prompts configured</p>' :
-          `<div class="space-y-3">
-            ${llmPrompts.map(p => `
-              <div class="p-3 border border-gray-100 rounded-xl">
-                <div class="flex items-start justify-between">
-                  <div class="flex-1">
-                    <p class="text-sm font-medium text-gray-800">"${p.prompt_text}"</p>
-                    <p class="text-xs text-gray-400 mt-1">Target: ${p.target_brand || 'N/A'} · Model: ${p.llm_model}</p>
-                  </div>
-                  <span class="ml-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${p.latest_mentioned ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
-                    ${p.latest_mentioned ? '✓ Mentioned' : '✗ Not Mentioned'}
-                  </span>
-                </div>
-              </div>
-            `).join('')}
-          </div>`}
+
+        <!-- Section: Digital Properties -->
+        <div class="mb-6">
+          <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 pb-1 border-b">Digital Properties & Social</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">CMS Platform</label>
+              <select id="cl_cms_platform" class="input-field">
+                ${['wordpress','shopify','wix','squarespace','webflow','custom','other'].map(s => `<option value="${s}" ${v('cms_platform','wordpress') === s ? 'selected' : ''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hosting Provider</label>
+              <input type="text" id="cl_hosting_provider" class="input-field" value="${v('hosting_provider')}" placeholder="Panthur, Kinsta, SiteGround">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">GA4 Property ID</label>
+              <input type="text" id="cl_ga4_property_id" class="input-field" value="${v('ga4_property_id')}" placeholder="G-XXXXXXXXXX">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Google Search Console Property</label>
+              <input type="text" id="cl_gsc_property" class="input-field" value="${v('gsc_property')}" placeholder="https://apexplumbing.com.au">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Google Business Profile ID</label>
+              <input type="text" id="cl_google_business_id" class="input-field" value="${v('google_business_id')}">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">LinkedIn URL</label>
+              <input type="text" id="cl_linkedin_url" class="input-field" value="${v('linkedin_url')}" placeholder="linkedin.com/company/...">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Facebook URL</label>
+              <input type="text" id="cl_facebook_url" class="input-field" value="${v('facebook_url')}" placeholder="facebook.com/...">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Instagram Handle</label>
+              <input type="text" id="cl_instagram_handle" class="input-field" value="${v('instagram_handle')}" placeholder="@apexplumbing">
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <textarea id="cl_notes" class="input-field" rows="3" placeholder="Any notes about this client...">${v('notes')}</textarea>
+        </div>
+
+        <div class="flex gap-3 pt-4 border-t">
+          ${isEdit ? `<button onclick="deleteClient(${cl.id})" class="btn-danger">Delete Client</button><div class="flex-1"></div>` : ''}
+          <button onclick="navigate('${isEdit ? 'client_detail' : 'clients'}')" class="btn-secondary">Cancel</button>
+          <button onclick="${isEdit ? `saveEditClient(${cl.id})` : 'saveNewClient()'}" class="btn-primary">
+            <i class="fas fa-save mr-2"></i>${isEdit ? 'Save Changes' : 'Add Client'}
+          </button>
+        </div>
       </div>
     </div>
   `;
 }
 
+function openEditClientModal(cl) {
+  state.editingClient = typeof cl === 'string' ? JSON.parse(cl) : cl;
+  navigate('edit_client', { editingClient: state.editingClient });
+}
+
 // ==============================
-// CAMPAIGNS LIST
+// CAMPAIGNS
 // ==============================
 function renderCampaigns() {
-  if (!state.campaigns || !state.campaigns.length) {
-    loadCampaigns();
-    return loading();
-  }
+  if (!state.campaigns || !state.campaigns.length) { loadCampaigns(); return loading(); }
   return `
     <div class="space-y-4">
       ${state.campaigns.map(ca => `
@@ -594,7 +803,7 @@ function renderCampaigns() {
           </div>
           <div class="flex items-center gap-4">
             <div class="text-right">
-              <p class="font-bold text-gray-700">$${Number(ca.monthly_investment).toLocaleString()}/mo</p>
+              <p class="font-bold text-gray-700">${fmtCurrency(ca.monthly_investment)}/mo</p>
               <p class="text-xs text-gray-400">since ${ca.start_date}</p>
             </div>
             ${statusBadge(ca.status)}
@@ -602,8 +811,152 @@ function renderCampaigns() {
           </div>
         </div>
       `).join('')}
+      ${renderNewCampaignModal()}
     </div>
-    ${renderNewCampaignModal()}
+  `;
+}
+
+function renderCampaignDetail() {
+  const ca = state.selectedCampaign;
+  if (!ca) return '<p>No campaign selected</p>';
+  if (!ca.keywords && !ca._loaded) { loadCampaignDetail(ca.id); return loading(); }
+  const kws = ca.keywords || [];
+  const top3 = kws.filter(k => k.current_rank && k.current_rank <= 3).length;
+  const top10 = kws.filter(k => k.current_rank && k.current_rank <= 10).length;
+
+  return `
+    <div class="space-y-6">
+      <div class="flex items-center gap-2 text-sm text-gray-500">
+        <button onclick="navigate('campaigns')" class="hover:text-blue-600"><i class="fas fa-arrow-left mr-1"></i>Campaigns</button>
+        <i class="fas fa-chevron-right text-xs"></i>
+        <span class="text-gray-900 font-medium">${ca.name}</span>
+      </div>
+
+      <div class="card">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">${ca.name}</h2>
+            <p class="text-sm text-gray-500">${ca.company_name || ''} · ${ca.campaign_type?.replace(/_/g,' ')} · Started ${ca.start_date}</p>
+          </div>
+          <div class="flex gap-2 items-center">
+            <span class="font-bold text-xl text-blue-600">${fmtCurrency(ca.monthly_investment)}<span class="text-sm text-gray-400">/mo</span></span>
+            ${statusBadge(ca.status)}
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">
+          ${[['Keywords', kws.length, 'fa-key'],['Top 3', top3, 'fa-trophy'],['Top 10', top10, 'fa-star'],['LLM Prompts', (ca.llm_prompts||[]).length, 'fa-robot']].map(([l,v,i]) => `
+            <div class="text-center"><div class="text-2xl font-bold text-gray-900">${v}</div><div class="text-xs text-gray-400 mt-1"><i class="fas ${i} mr-1"></i>${l}</div></div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="flex gap-3 flex-wrap">
+        <button onclick="trackRankings('${ca.id}')" class="btn-primary"><i class="fas fa-sync-alt mr-2"></i>Track Rankings Now</button>
+        <button onclick="trackLLM('${ca.id}')" class="btn-secondary"><i class="fas fa-robot mr-2"></i>Check LLM Mentions</button>
+        <button onclick="generateReport('${ca.id}')" class="btn-success"><i class="fas fa-chart-line mr-2"></i>Generate Report</button>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-magnifying-glass-chart text-blue-500 mr-2"></i>Keyword Rankings</h3>
+          <button onclick="openModal('new_keyword_modal')" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>Add Keywords</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
+              <th class="px-3 py-2 rounded-l-lg">Keyword</th>
+              <th class="px-3 py-2 text-center">Current</th>
+              <th class="px-3 py-2 text-center">Previous</th>
+              <th class="px-3 py-2 text-center">Change</th>
+              <th class="px-3 py-2">Vol.</th>
+              <th class="px-3 py-2 rounded-r-lg">Priority</th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-50">
+              ${kws.length === 0 ? '<tr><td colspan="6" class="px-3 py-8 text-center text-gray-400">No keywords yet</td></tr>' :
+                kws.map(kw => `
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-3 py-3"><div class="font-medium text-gray-900">${kw.keyword}</div>${kw.target_url ? `<div class="text-xs text-gray-400 truncate max-w-xs">${kw.target_url}</div>` : ''}</td>
+                    <td class="px-3 py-3 text-center">${rankBadge(kw.current_rank)}</td>
+                    <td class="px-3 py-3 text-center text-gray-400 text-sm">${kw.previous_rank || '–'}</td>
+                    <td class="px-3 py-3 text-center">${rankChange(kw.current_rank, kw.previous_rank)}</td>
+                    <td class="px-3 py-3 text-xs text-gray-500">${kw.monthly_search_volume ? kw.monthly_search_volume.toLocaleString() : '–'}</td>
+                    <td class="px-3 py-3">${statusBadge(kw.priority)}</td>
+                  </tr>
+                `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LLM Prompts -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-robot text-purple-500 mr-2"></i>AI/LLM Visibility Tracking</h3>
+          <button onclick="openModal('new_llm_modal')" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>Add Prompt</button>
+        </div>
+        ${(ca.llm_prompts||[]).length === 0 ? '<p class="text-gray-400 text-sm">No LLM prompts configured</p>' :
+          `<div class="space-y-3">${(ca.llm_prompts||[]).map(p => `
+            <div class="p-3 border border-gray-100 rounded-xl">
+              <div class="flex items-start justify-between">
+                <div class="flex-1"><p class="text-sm font-medium text-gray-800">"${p.prompt_text}"</p>
+                <p class="text-xs text-gray-400 mt-1">Target: ${p.target_brand || 'N/A'} · Model: ${p.llm_model}</p></div>
+                <span class="ml-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${p.latest_mentioned ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+                  ${p.latest_mentioned ? '✓ Mentioned' : '✗ Not Mentioned'}
+                </span>
+              </div>
+            </div>`).join('')}</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderNewCampaignModal() {
+  return `
+    <div id="new_campaign_modal" class="modal-overlay hidden">
+      <div class="modal-box p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900">New Campaign</h3>
+          <button onclick="closeModal('new_campaign_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
+            <select id="newCampaignClient" class="input-field">
+              <option value="">Select client...</option>
+              ${(state.clients||[]).map(cl => `<option value="${cl.id}" ${state.selectedClient?.id === cl.id ? 'selected' : ''}>${cl.company_name}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
+            <input type="text" id="newCampaignName" class="input-field" placeholder="Organic SEO Campaign 2025">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select id="newCampaignType" class="input-field">
+                <option value="organic_seo">Organic SEO</option>
+                <option value="local_seo">Local SEO</option>
+                <option value="content_marketing">Content Marketing</option>
+                <option value="social_media">Social Media</option>
+                <option value="full_service">Full Service</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Monthly ($)</label>
+              <input type="number" id="newCampaignInvestment" class="input-field" placeholder="2500">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input type="date" id="newCampaignStart" class="input-field" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+        </div>
+        <div class="flex gap-3 mt-5">
+          <button onclick="closeModal('new_campaign_modal')" class="btn-secondary flex-1">Cancel</button>
+          <button onclick="saveNewCampaign()" class="btn-primary flex-1"><i class="fas fa-rocket mr-2"></i>Create Campaign</button>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -611,47 +964,77 @@ function renderCampaigns() {
 // PROPOSALS
 // ==============================
 function renderProposals() {
-  if (!state.proposals) {
-    loadProposals();
-    return loading();
-  }
+  if (!state.proposals) { loadProposals(); return loading(); }
   return `
     <div class="space-y-4">
-      ${(state.proposals || []).map(p => `
-        <div class="card">
-          <div class="flex items-start justify-between">
-            <div>
-              <h3 class="font-semibold text-gray-900">${p.title}</h3>
-              <p class="text-sm text-gray-500">${p.company_name} · ${p.contact_email}</p>
-              <p class="text-xs text-gray-400 mt-1">Created ${p.created_at?.slice(0,10)} ${p.sent_at ? `· Sent ${p.sent_at?.slice(0,10)}` : ''}</p>
-            </div>
-            <div class="text-right flex flex-col items-end gap-2">
-              <span class="text-xl font-bold text-blue-600">$${Number(p.monthly_investment).toLocaleString()}/mo</span>
-              ${statusBadge(p.status)}
-              <div class="flex gap-2 mt-1">
-                ${p.status === 'draft' ? `<button onclick="sendProposal(${p.id})" class="btn-primary text-xs">Send to Client</button>` : ''}
-                ${p.status === 'sent' ? `
-                  <button onclick="copyApprovalLink('${p.approval_token}')" class="btn-secondary text-xs"><i class="fas fa-link mr-1"></i>Copy Link</button>
-                  <a href="/proposals/approve/${p.approval_token}" target="_blank" class="btn-secondary text-xs"><i class="fas fa-eye mr-1"></i>Preview</a>
-                ` : ''}
-                ${p.status === 'approved' ? `<span class="text-xs text-green-600"><i class="fas fa-check-circle mr-1"></i>Approved ${p.approved_at?.slice(0,10)}</span>` : ''}
+      <div class="flex gap-3 flex-wrap">
+        <select id="proposalStatusFilter" class="input-field w-40" onchange="filterProposals()">
+          <option value="">All Statuses</option>
+          <option value="draft">Draft</option>
+          <option value="sent">Sent</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Declined</option>
+        </select>
+      </div>
+      <div class="space-y-3">
+        ${(state.proposals || []).length === 0 ? '<div class="card text-center py-12 text-gray-400">No proposals yet. <button onclick="navigate(\'new_proposal\')" class="text-blue-600 hover:underline ml-1">Create one</button></div>' :
+          (state.proposals || []).map(p => `
+            <div class="card">
+              <div class="flex items-start justify-between flex-wrap gap-4">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <h3 class="font-semibold text-gray-900">${p.title}</h3>
+                    ${statusBadge(p.status)}
+                  </div>
+                  <p class="text-sm text-gray-500">${p.company_name} · ${p.contact_email}</p>
+                  <p class="text-xs text-gray-400 mt-1">
+                    ${(p.proposal_type||'').replace(/_/g,' ')} ·
+                    Created ${p.created_at?.slice(0,10)}
+                    ${p.sent_at ? `· Sent ${p.sent_at?.slice(0,10)}` : ''}
+                    ${p.approved_at ? `· Approved ${p.approved_at?.slice(0,10)}` : ''}
+                  </p>
+                </div>
+                <div class="text-right flex flex-col items-end gap-2">
+                  <span class="text-xl font-bold text-blue-600">${fmtCurrency(p.monthly_investment)}/mo</span>
+                  <p class="text-xs text-gray-400">${p.contract_length} month contract</p>
+                  ${p.setup_fee > 0 ? `<p class="text-xs text-gray-500">+ ${fmtCurrency(p.setup_fee)} setup fee</p>` : ''}
+                  <div class="flex gap-2 flex-wrap justify-end">
+                    ${p.status === 'draft' ? `<button onclick="sendProposal(${p.id})" class="btn-primary text-xs"><i class="fas fa-paper-plane mr-1"></i>Send to Client</button>` : ''}
+                    ${p.status === 'sent' ? `
+                      <button onclick="copyApprovalLink('${p.approval_token}')" class="btn-secondary text-xs"><i class="fas fa-link mr-1"></i>Copy Link</button>
+                      <a href="/proposals/approve/${p.approval_token}" target="_blank" class="btn-secondary text-xs"><i class="fas fa-eye mr-1"></i>Preview</a>
+                    ` : ''}
+                    ${p.status === 'approved' && !p.paid_at ? `
+                      <button onclick="activatePayment(${p.id})" class="btn-success text-xs"><i class="fas fa-bolt mr-1"></i>Activate Campaign</button>
+                    ` : ''}
+                    ${p.paid_at ? `<span class="text-xs text-green-600"><i class="fas fa-check-circle mr-1"></i>Active & Billing</span>` : ''}
+                  </div>
+                </div>
               </div>
+              ${p.scope_summary ? `<p class="text-sm text-gray-500 mt-3 pt-3 border-t line-clamp-2">${p.scope_summary}</p>` : ''}
             </div>
-          </div>
-          ${p.scope_summary ? `<p class="text-sm text-gray-600 mt-3 pt-3 border-t line-clamp-2">${p.scope_summary}</p>` : ''}
-        </div>
-      `).join('')}
+          `).join('')}
+      </div>
     </div>
   `;
 }
 
 // ==============================
-// NEW PROPOSAL
+// NEW PROPOSAL (Enhanced)
 // ==============================
 function renderNewProposal() {
   const preClient = state.selectedClient;
+  const proposalTypes = [
+    ['organic_seo','Organic SEO'],['local_seo','Local SEO'],
+    ['content_marketing','Content Marketing'],['technical_seo','Technical SEO'],
+    ['full_service','Full Service Digital Marketing'],['wordpress_dev','WordPress Development'],
+    ['wordpress_maintenance','WordPress Maintenance'],['press_release','Press Release Package'],
+    ['social_media','Social Media Management'],['ai_seo_content','AI SEO Content Package'],
+    ['link_building','Link Building & Digital PR'],['ecommerce_seo','eCommerce SEO'],
+    ['reputation_management','Reputation Management'],['custom','Custom Package'],
+  ];
   return `
-    <div class="max-w-3xl space-y-6">
+    <div class="max-w-4xl space-y-6">
       <button onclick="navigate('proposals')" class="text-sm text-gray-500 hover:text-blue-600">
         <i class="fas fa-arrow-left mr-1"></i>Back to Proposals
       </button>
@@ -660,29 +1043,33 @@ function renderNewProposal() {
         <h2 class="text-lg font-bold text-gray-900 mb-5">Create New Proposal</h2>
         <div class="grid grid-cols-2 gap-4">
           <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
-            <select id="pClientId" class="input-field" onchange="prefillProposalClient(this.value)">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client *</label>
+            <select id="pClientId" class="input-field">
               <option value="">Select client...</option>
               ${(state.clients || []).map(cl => `<option value="${cl.id}" ${preClient?.id == cl.id ? 'selected' : ''}>${cl.company_name}</option>`).join('')}
             </select>
           </div>
           <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Service Type</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Service Type *</label>
             <select id="pType" class="input-field">
-              <option value="organic_seo">Organic SEO</option>
-              <option value="local_seo">Local SEO</option>
-              <option value="content">Content Marketing</option>
-              <option value="technical_seo">Technical SEO</option>
-              <option value="full_service">Full Service</option>
+              ${proposalTypes.map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Investment ($)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Investment ($) *</label>
             <input type="number" id="pInvestment" class="input-field" value="3000" min="500">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Contract Length (months)</label>
             <input type="number" id="pContractLength" class="input-field" value="12" min="1">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Setup Fee ($)</label>
+            <input type="number" id="pSetupFee" class="input-field" value="0" min="0" placeholder="0">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Account Manager</label>
+            <input type="text" id="pAccountManager" class="input-field" placeholder="Your name">
           </div>
           <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1">Target Keywords (comma separated)</label>
@@ -705,11 +1092,21 @@ function renderNewProposal() {
       </div>
 
       <div id="proposalPreview" class="hidden card">
-        <h3 class="font-semibold text-gray-900 mb-4">Generated Proposal</h3>
+        <h3 class="font-semibold text-gray-900 mb-4">Generated Proposal — Review & Edit</h3>
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
             <input type="text" id="pTitle" class="input-field">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Investment ($)</label>
+              <input type="number" id="pInvestmentFinal" class="input-field">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Contract Length (months)</label>
+              <input type="number" id="pContractFinal" class="input-field">
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Scope of Work</label>
@@ -720,74 +1117,27 @@ function renderNewProposal() {
             <textarea id="pDeliverables" class="input-field" rows="8"></textarea>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Goals</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Campaign Goals</label>
             <textarea id="pGoalsFinal" class="input-field" rows="3"></textarea>
           </div>
-          <div class="flex gap-3 pt-4 border-t">
-            <button onclick="saveProposal('draft')" class="btn-secondary flex-1">Save as Draft</button>
-            <button onclick="saveProposal('send')" class="btn-primary flex-1">
-              <i class="fas fa-paper-plane mr-2"></i>Save & Send to Client
-            </button>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Baseline Notes</label>
+            <textarea id="pBaseline" class="input-field" rows="2"></textarea>
           </div>
         </div>
-      </div>
-    </div>
-  `;
-}
 
-// ==============================
-// NEW CLIENT
-// ==============================
-function renderNewClient() {
-  return `
-    <div class="max-w-2xl">
-      <button onclick="navigate('clients')" class="text-sm text-gray-500 hover:text-blue-600 mb-4 block">
-        <i class="fas fa-arrow-left mr-1"></i>Back to Clients
-      </button>
-      <div class="card">
-        <h2 class="text-lg font-bold text-gray-900 mb-5">Add New Client</h2>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
-            <input type="text" id="newClientCompany" class="input-field" placeholder="Apex Plumbing Services">
+        <!-- Line Items -->
+        <div class="mt-5 pt-5 border-t">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-semibold text-gray-800 text-sm">Deliverable Line Items</h4>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Contact Name *</label>
-            <input type="text" id="newClientContact" class="input-field" placeholder="James Mitchell">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Contact Email *</label>
-            <input type="email" id="newClientEmail" class="input-field" placeholder="james@company.com">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <input type="tel" id="newClientPhone" class="input-field" placeholder="+61 2 9000 0000">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Website *</label>
-            <input type="text" id="newClientWebsite" class="input-field" placeholder="apexplumbing.com.au">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-            <input type="text" id="newClientIndustry" class="input-field" placeholder="Trades & Home Services">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-            <input type="text" id="newClientLocation" class="input-field" placeholder="Sydney, NSW, Australia">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Budget ($)</label>
-            <input type="number" id="newClientBudget" class="input-field" placeholder="2500">
-          </div>
-          <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea id="newClientNotes" class="input-field" rows="2" placeholder="Any notes about this client..."></textarea>
-          </div>
+          <div id="lineItemsList" class="space-y-2"></div>
         </div>
-        <div class="flex gap-3 mt-5">
-          <button onclick="navigate('clients')" class="btn-secondary flex-1">Cancel</button>
-          <button onclick="saveNewClient()" class="btn-primary flex-1">
-            <i class="fas fa-user-plus mr-2"></i>Add Client
+
+        <div class="flex gap-3 mt-5 pt-5 border-t">
+          <button onclick="saveProposal('draft')" class="btn-secondary flex-1">Save as Draft</button>
+          <button onclick="saveProposal('send')" class="btn-primary flex-1">
+            <i class="fas fa-paper-plane mr-2"></i>Save & Send to Client
           </button>
         </div>
       </div>
@@ -796,446 +1146,602 @@ function renderNewClient() {
 }
 
 // ==============================
-// KEYWORDS
+// PAYMENTS & BILLING
 // ==============================
-function renderKeywords() {
-  if (!state.keywords) {
-    loadKeywords();
-    return loading();
-  }
-  const kws = state.keywords || [];
-  const top3 = kws.filter(k => k.current_rank && k.current_rank <= 3).length;
-  const top10 = kws.filter(k => k.current_rank && k.current_rank <= 10).length;
-
+function renderPayments() {
+  if (!state.billingData) { loadBilling(); return loading(); }
+  const d = state.billingData;
+  const stats = d.stats || {};
   return `
-    <div class="space-y-5">
-      <div class="grid grid-cols-4 gap-4">
+    <div class="space-y-6">
+      <!-- Stats Row -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         ${[
-          ['Total Tracked', kws.length, 'bg-blue-50 text-blue-700'],
-          ['Top 3', top3, 'bg-green-50 text-green-700'],
-          ['Top 10', top10, 'bg-yellow-50 text-yellow-700'],
-          ['Unranked', kws.filter(k => !k.current_rank || k.current_rank > 100).length, 'bg-gray-50 text-gray-600'],
-        ].map(([l,v,c]) => `
-          <div class="card text-center">
-            <div class="text-3xl font-bold ${c.split(' ')[1]}">${v}</div>
-            <div class="text-sm text-gray-500 mt-1">${l}</div>
+          { label: 'Monthly Recurring', val: fmtCurrency(stats.monthly_recurring), sub: `${stats.active_clients || 0} active clients`, color: 'blue' },
+          { label: 'Total Collected', val: fmtCurrency(stats.total_collected), sub: 'All time', color: 'green' },
+          { label: 'Active Schedules', val: stats.active_schedules || 0, sub: '28-day billing cycles', color: 'purple' },
+          { label: 'Overdue', val: fmtCurrency(d.overdue?.total || 0), sub: `${d.overdue?.count || 0} schedules`, color: 'red' },
+        ].map(s => `
+          <div class="card">
+            <div class="text-2xl font-bold text-${s.color}-600">${s.val}</div>
+            <div class="text-sm text-gray-700 mt-0.5 font-medium">${s.label}</div>
+            <div class="text-xs text-gray-400 mt-1">${s.sub}</div>
           </div>
         `).join('')}
       </div>
 
-      <div class="card">
-        <div class="flex gap-3 mb-4">
-          <select id="kwCampaignFilter" class="input-field max-w-xs" onchange="filterKeywords()">
-            <option value="">All Campaigns</option>
-            ${(state.campaigns || []).map(c => `<option value="${c.id}">${c.name} (${c.company_name})</option>`).join('')}
-          </select>
-          <select id="kwGroupFilter" class="input-field max-w-xs" onchange="filterKeywords()">
-            <option value="">All Groups</option>
-            ${[...new Set(kws.map(k => k.keyword_group).filter(Boolean))].map(g => `<option value="${g}">${g}</option>`).join('')}
-          </select>
-          <select id="kwPriorityFilter" class="input-field max-w-xs" onchange="filterKeywords()">
-            <option value="">All Priorities</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Upcoming Billing -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-900"><i class="fas fa-calendar-alt text-blue-500 mr-2"></i>Upcoming Billing</h3>
+            <button onclick="processBilling()" class="btn-secondary text-xs"><i class="fas fa-cogs mr-1"></i>Process Due Now</button>
+          </div>
+          ${!(d.upcoming_billing||[]).length ? '<p class="text-gray-400 text-sm">No upcoming billing</p>' :
+            `<div class="space-y-2">
+              ${(d.upcoming_billing||[]).slice(0,8).map(bs => `
+                <div class="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
+                  <div>
+                    <p class="font-medium text-sm text-gray-900">${bs.company_name}</p>
+                    <p class="text-xs text-gray-500">${bs.campaign_name} · Cycle ${bs.cycle_number}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-semibold text-gray-900">${fmtCurrency(bs.amount)}</p>
+                    <p class="text-xs ${new Date(bs.next_billing_date) < new Date() ? 'text-red-500 font-medium' : 'text-gray-400'}">${bs.next_billing_date}</p>
+                  </div>
+                </div>`).join('')}
+            </div>`}
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
-                <th class="px-3 py-2 rounded-l-lg">Keyword</th>
-                <th class="px-3 py-2 text-center">Rank</th>
-                <th class="px-3 py-2 text-center">Change</th>
-                <th class="px-3 py-2">Group</th>
-                <th class="px-3 py-2">Vol.</th>
-                <th class="px-3 py-2">KD</th>
-                <th class="px-3 py-2">CPC</th>
-                <th class="px-3 py-2 rounded-r-lg">Priority</th>
-              </tr>
-            </thead>
-            <tbody id="kwTable" class="divide-y divide-gray-50">
-              ${renderKeywordRows(kws)}
-            </tbody>
-          </table>
+
+        <!-- Recent Payments -->
+        <div class="card">
+          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-receipt text-green-500 mr-2"></i>Recent Payments</h3>
+          ${!(d.recent_payments||[]).length ? '<p class="text-gray-400 text-sm">No payments yet</p>' :
+            `<div class="space-y-2">
+              ${(d.recent_payments||[]).slice(0,8).map(pmt => `
+                <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">${pmt.company_name}</p>
+                    <p class="text-xs text-gray-400">${pmt.invoice_number || ''} · ${pmt.paid_at?.slice(0,10) || pmt.created_at?.slice(0,10)}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-semibold text-gray-900">${fmtCurrency(pmt.amount)}</p>
+                    ${statusBadge(pmt.status)}
+                  </div>
+                </div>`).join('')}
+            </div>`}
         </div>
       </div>
+
+      <!-- Manual Payment -->
+      <div class="card">
+        <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-plus-circle text-purple-500 mr-2"></i>Record Manual Payment</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
+            <select id="manualPayClient" class="input-field">
+              <option value="">Select...</option>
+              ${(state.clients||[]).map(cl => `<option value="${cl.id}">${cl.company_name}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+            <input type="number" id="manualPayAmount" class="input-field" placeholder="2500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <select id="manualPayType" class="input-field">
+              <option value="first_payment">First Payment</option>
+              <option value="recurring">Recurring</option>
+              <option value="one_off">One-Off</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <input type="text" id="manualPayDesc" class="input-field" placeholder="Invoice description">
+          </div>
+        </div>
+        <button onclick="recordManualPayment()" class="btn-primary mt-4"><i class="fas fa-check mr-2"></i>Record Payment</button>
+      </div>
     </div>
-    ${renderNewKeywordModal()}
   `;
 }
 
-function renderKeywordRows(kws) {
-  if (!kws.length) return '<tr><td colspan="8" class="px-3 py-8 text-center text-gray-400">No keywords found</td></tr>';
-  return kws.map(kw => `
-    <tr class="hover:bg-gray-50">
-      <td class="px-3 py-3">
-        <div class="font-medium text-gray-900">${kw.keyword}</div>
-        ${kw.target_url ? `<div class="text-xs text-gray-400 truncate max-w-xs">${kw.target_url}</div>` : ''}
-      </td>
-      <td class="px-3 py-3 text-center">${rankBadge(kw.current_rank)}</td>
-      <td class="px-3 py-3 text-center">${rankChange(kw.current_rank, kw.previous_rank)}</td>
-      <td class="px-3 py-3 text-xs text-gray-500">${kw.keyword_group || '–'}</td>
-      <td class="px-3 py-3 text-xs text-gray-500">${kw.monthly_search_volume?.toLocaleString() || '–'}</td>
-      <td class="px-3 py-3 text-xs">${kw.keyword_difficulty ? `<span class="font-medium ${kw.keyword_difficulty > 70 ? 'text-red-500' : kw.keyword_difficulty > 40 ? 'text-yellow-600' : 'text-green-600'}">${kw.keyword_difficulty}</span>` : '–'}</td>
-      <td class="px-3 py-3 text-xs text-gray-500">${kw.cpc ? `$${kw.cpc.toFixed(2)}` : '–'}</td>
-      <td class="px-3 py-3">${statusBadge(kw.priority)}</td>
-    </tr>
-  `).join('');
+// ==============================
+// WORDPRESS PROJECTS
+// ==============================
+function renderWordPress() {
+  if (!state.wpProjects) { loadWpProjects(); return loading(); }
+  return `
+    <div class="space-y-4">
+      ${(state.wpProjects||[]).length === 0 ? `
+        <div class="card text-center py-12">
+          <i class="fab fa-wordpress text-5xl text-gray-200 mb-4"></i>
+          <p class="text-gray-500 mb-2">No WordPress projects yet</p>
+          <button onclick="openModal('new_wp_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New WP Project</button>
+        </div>` :
+        (state.wpProjects||[]).map(wp => `
+          <div class="card hover:shadow-md transition cursor-pointer" onclick="navigate('wordpress_detail', {selectedWpProject: ${JSON.stringify(wp).replace(/"/g,'&quot;')}})">
+            <div class="flex items-start justify-between">
+              <div class="flex gap-4 items-start">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <i class="fab fa-wordpress text-blue-600 text-lg"></i>
+                </div>
+                <div>
+                  <h3 class="font-semibold text-gray-900">${wp.project_name}</h3>
+                  <p class="text-sm text-gray-500">${wp.company_name} · ${wp.project_type?.replace(/_/g,' ')}</p>
+                  ${wp.site_url ? `<p class="text-xs text-blue-500 mt-0.5">${wp.site_url}</p>` : ''}
+                  <div class="flex gap-4 mt-2 text-xs text-gray-400">
+                    ${wp.theme_used ? `<span><i class="fas fa-palette mr-1"></i>${wp.theme_used}</span>` : ''}
+                    ${wp.page_builder ? `<span><i class="fas fa-th-large mr-1"></i>${wp.page_builder}</span>` : ''}
+                    ${wp.block_count ? `<span><i class="fas fa-puzzle-piece mr-1"></i>${wp.blocks_completed||0}/${wp.block_count} blocks done</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="flex flex-col items-end gap-2">
+                ${statusBadge(wp.status)}
+                ${wp.project_budget ? `<span class="text-sm font-semibold text-gray-700">${fmtCurrency(wp.project_budget)}</span>` : ''}
+                ${wp.go_live_date ? `<span class="text-xs text-gray-400">Live: ${wp.go_live_date}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      ${renderNewWpModal()}
+    </div>
+  `;
 }
 
-// ==============================
-// LLM TRACKING
-// ==============================
-function renderLLM() {
-  if (!state.llmData) {
-    loadLLM();
-    return loading();
-  }
-  const prompts = state.llmData || [];
-  const mentioned = prompts.filter(p => p.latest_mentioned).length;
-  const total = prompts.length;
-  const rate = total > 0 ? Math.round((mentioned / total) * 100) : 0;
+function renderWpProjectDetail() {
+  const wp = state.selectedWpProject;
+  if (!wp) return '<p>No project selected</p>';
+  if (!wp.blocks && !wp._loaded) { loadWpProjectDetail(wp.id); return loading(); }
 
-  const byModel = {};
-  for (const p of prompts) {
-    if (!byModel[p.llm_model]) byModel[p.llm_model] = { total: 0, mentioned: 0 };
-    byModel[p.llm_model].total++;
-    if (p.latest_mentioned) byModel[p.llm_model].mentioned++;
-  }
+  const blocks = wp.blocks || [];
+  const completed = blocks.filter(b => b.status === 'completed').length;
+  const total_hours = blocks.reduce((a, b) => a + (b.hours_estimated || 0), 0);
 
   return `
-    <div class="space-y-5">
-      <!-- Summary Cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="card text-center">
-          <div class="text-4xl font-bold text-purple-600">${rate}%</div>
-          <div class="text-sm text-gray-500 mt-1">Overall Mention Rate</div>
+    <div class="space-y-6">
+      <div class="flex items-center gap-2 text-sm text-gray-500">
+        <button onclick="navigate('wordpress')" class="hover:text-blue-600"><i class="fas fa-arrow-left mr-1"></i>WordPress Projects</button>
+        <i class="fas fa-chevron-right text-xs"></i>
+        <span class="text-gray-900 font-medium">${wp.project_name}</span>
+      </div>
+
+      <div class="card">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">${wp.project_name}</h2>
+            <p class="text-sm text-gray-500">${wp.company_name} · ${wp.project_type?.replace(/_/g,' ')}</p>
+            ${wp.site_url ? `<a href="${wp.site_url}" target="_blank" class="text-blue-600 text-sm hover:underline">${wp.site_url}</a>` : ''}
+          </div>
+          <div class="flex gap-2 items-center flex-wrap">
+            ${statusBadge(wp.status)}
+            ${wp.project_budget ? `<span class="font-bold text-xl text-blue-600">${fmtCurrency(wp.project_budget)}</span>` : ''}
+          </div>
         </div>
-        <div class="card text-center">
-          <div class="text-4xl font-bold text-green-600">${mentioned}</div>
-          <div class="text-sm text-gray-500 mt-1">Prompts Mentioned</div>
-        </div>
-        <div class="card text-center">
-          <div class="text-4xl font-bold text-gray-700">${total}</div>
-          <div class="text-sm text-gray-500 mt-1">Total Prompts Tracked</div>
-        </div>
-        <div class="card">
-          <p class="text-xs font-semibold text-gray-500 mb-2">By Model</p>
-          ${Object.entries(byModel).map(([model, stats]) => `
-            <div class="flex justify-between text-sm mb-1">
-              <span class="capitalize text-gray-700">${model}</span>
-              <span class="font-medium">${stats.mentioned}/${stats.total}</span>
-            </div>
-          `).join('') || '<p class="text-gray-400 text-sm">No data</p>'}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">
+          <div><p class="text-xs text-gray-400">Theme</p><p class="font-medium text-sm">${wp.theme_used || '–'}</p></div>
+          <div><p class="text-xs text-gray-400">Page Builder</p><p class="font-medium text-sm">${wp.page_builder || '–'}</p></div>
+          <div><p class="text-xs text-gray-400">Hours</p><p class="font-medium text-sm">${wp.hours_used || 0} / ${wp.hours_quoted || 0} quoted</p></div>
+          <div><p class="text-xs text-gray-400">Go-Live</p><p class="font-medium text-sm">${wp.go_live_date || 'TBD'}</p></div>
         </div>
       </div>
 
-      <!-- Prompts Table -->
+      <!-- Implementation Blocks Progress -->
       <div class="card">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900"><i class="fas fa-robot text-purple-500 mr-2"></i>LLM Prompt Performance</h3>
-          <div class="flex gap-2">
-            <button onclick="trackAllLLM()" class="btn-secondary"><i class="fas fa-sync-alt mr-1"></i>Refresh All</button>
-          </div>
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-puzzle-piece text-blue-500 mr-2"></i>Implementation Blocks (${completed}/${blocks.length})</h3>
+          <button onclick="openModal('new_wp_block_modal')" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>Add Block</button>
         </div>
-        <div class="space-y-3">
-          ${prompts.length === 0 ? '<p class="text-gray-400 text-sm py-4 text-center">No LLM prompts yet. Add prompts to track AI visibility.</p>' :
-            prompts.map(p => `
-              <div class="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex-1">
-                    <p class="text-sm font-medium text-gray-800">"${p.prompt_text}"</p>
-                    <div class="flex gap-3 mt-2 text-xs text-gray-500">
-                      <span><i class="fas fa-bullseye mr-1"></i>Brand: ${p.target_brand || 'N/A'}</span>
-                      <span><i class="fas fa-robot mr-1"></i>${p.llm_model}</span>
-                      <span><i class="fas fa-chart-bar mr-1"></i>${p.total_mentions || 0}/${p.total_checks || 0} mentions</span>
-                    </div>
+        <!-- Progress bar -->
+        <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+          <div class="bg-blue-600 h-2 rounded-full transition-all" style="width: ${blocks.length ? Math.round(completed/blocks.length*100) : 0}%"></div>
+        </div>
+        <p class="text-xs text-gray-500 mb-4">${completed} of ${blocks.length} blocks completed · ${total_hours}h estimated total</p>
+
+        <div class="space-y-2">
+          ${blocks.length === 0 ? '<p class="text-gray-400 text-sm">No implementation blocks yet</p>' :
+            blocks.map(blk => `
+              <div class="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50">
+                <div class="flex-shrink-0">
+                  <button onclick="updateBlockStatus(${blk.id}, '${blk.status === 'completed' ? 'pending' : 'completed'}')"
+                    class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition
+                      ${blk.status === 'completed' ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-500'}">
+                    ${blk.status === 'completed' ? '<i class="fas fa-check text-xs"></i>' : ''}
+                  </button>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <p class="font-medium text-sm text-gray-900 ${blk.status === 'completed' ? 'line-through text-gray-400' : ''}">${blk.block_name}</p>
+                    ${statusBadge(blk.status)}
                   </div>
-                  <div class="flex flex-col items-end gap-1">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${p.latest_mentioned ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
-                      ${p.latest_mentioned ? '✓ Mentioned' : '✗ Not Mentioned'}
-                    </span>
-                    ${p.latest_sentiment && p.latest_sentiment !== 'not_mentioned' ? `
-                      <span class="text-xs ${p.latest_sentiment === 'positive' ? 'text-green-500' : p.latest_sentiment === 'negative' ? 'text-red-500' : 'text-gray-400'}">
-                        ${p.latest_sentiment}
-                      </span>
-                    ` : ''}
-                    ${p.total_checks > 0 ? `
-                      <div class="w-20 bg-gray-100 rounded-full h-1.5 mt-1">
-                        <div class="bg-purple-500 h-1.5 rounded-full" style="width:${Math.round((p.total_mentions/p.total_checks)*100)}%"></div>
-                      </div>
-                    ` : ''}
-                  </div>
+                  ${blk.description ? `<p class="text-xs text-gray-400 mt-0.5">${blk.description}</p>` : ''}
+                </div>
+                <div class="text-right flex-shrink-0">
+                  ${blk.hours_estimated ? `<p class="text-xs text-gray-500">${blk.hours_estimated}h</p>` : ''}
+                  ${blk.price ? `<p class="text-xs font-semibold text-gray-700">${fmtCurrency(blk.price)}</p>` : ''}
                 </div>
               </div>
             `).join('')}
         </div>
       </div>
-    </div>
-    ${renderNewLLMModal()}
-  `;
-}
 
-// ==============================
-// CONTENT
-// ==============================
-function renderContent() {
-  if (!state.contentItems) {
-    loadContent();
-    return loading();
-  }
-  const items = state.contentItems || [];
-  const byStatus = {};
-  for (const item of items) {
-    byStatus[item.status] = (byStatus[item.status] || 0) + 1;
-  }
-
-  return `
-    <div class="space-y-5">
-      <div class="grid grid-cols-3 lg:grid-cols-6 gap-3">
-        ${['planned','briefed','in_progress','review','approved','published'].map(s => `
-          <div class="card text-center py-3">
-            <div class="text-2xl font-bold text-gray-800">${byStatus[s] || 0}</div>
-            <div class="mt-1">${statusBadge(s)}</div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="card">
-        <div class="flex gap-3 mb-4">
-          <select id="contentStatusFilter" class="input-field max-w-xs" onchange="filterContent()">
-            <option value="">All Statuses</option>
-            ${['planned','briefed','in_progress','review','approved','published','cancelled'].map(s => `<option value="${s}">${s.replace(/_/g,' ')}</option>`).join('')}
-          </select>
-          <select id="contentTypeFilter" class="input-field max-w-xs" onchange="filterContent()">
-            <option value="">All Types</option>
-            ${['blog_post','landing_page','meta_optimization','guestpost','press_release','faq_page'].map(t => `<option value="${t}">${t.replace(/_/g,' ')}</option>`).join('')}
-          </select>
-        </div>
-        <div id="contentTable" class="space-y-2">
-          ${renderContentRows(items)}
-        </div>
-      </div>
-    </div>
-    ${renderNewContentModal()}
-    ${renderContentBriefModal()}
-  `;
-}
-
-function renderContentRows(items) {
-  if (!items.length) return '<p class="text-center text-gray-400 py-8">No content items yet</p>';
-  return items.map(ci => `
-    <div class="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition">
-      <div class="flex-1">
-        <p class="font-medium text-gray-900">${ci.title}</p>
-        <div class="flex gap-3 mt-1 text-xs text-gray-500">
-          <span>${ci.company_name}</span>
-          <span>·</span>
-          <span>${ci.content_type?.replace(/_/g,' ')}</span>
-          ${ci.target_keyword ? `<span>· <i class="fas fa-key mr-0.5"></i>${ci.target_keyword}</span>` : ''}
-          ${ci.due_date ? `<span>· Due ${ci.due_date}</span>` : ''}
-          ${ci.word_count_target ? `<span>· ${ci.word_count_target.toLocaleString()} words</span>` : ''}
-        </div>
-      </div>
-      <div class="flex items-center gap-3 ml-4">
-        ${statusBadge(ci.status)}
-        <select class="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600 focus:outline-none" 
-          onchange="updateContentStatus(${ci.id}, this.value)">
-          ${['planned','briefed','in_progress','review','approved','published','cancelled'].map(s => `
-            <option value="${s}" ${ci.status === s ? 'selected' : ''}>${s.replace(/_/g,' ')}</option>
-          `).join('')}
-        </select>
-        <button onclick="openBriefModal(${JSON.stringify(ci).replace(/"/g,'&quot;')})" class="text-xs text-blue-600 hover:underline">Brief</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ==============================
-// REPORTS
-// ==============================
-function renderReports() {
-  if (!state.reports) {
-    loadReports();
-    return loading();
-  }
-  return `
-    <div class="space-y-4">
-      <div class="flex gap-3 mb-2">
-        <button onclick="openModal('generate_report_modal')" class="btn-primary">
-          <i class="fas fa-magic mr-2"></i>Generate New Report
-        </button>
-      </div>
-      ${(state.reports || []).length === 0 ? '<div class="card text-center py-12 text-gray-400"><i class="fas fa-chart-line text-4xl mb-3"></i><p>No reports yet</p></div>' :
-        (state.reports || []).map(r => `
-          <div class="card">
-            <div class="flex items-start justify-between">
-              <div>
-                <h3 class="font-semibold text-gray-900">${r.company_name} · ${r.report_period}</h3>
-                <p class="text-sm text-gray-500">${r.campaign_name} · ${r.report_type} report</p>
-                <p class="text-xs text-gray-400 mt-1">Generated ${r.created_at?.slice(0,10)}</p>
-              </div>
-              <div class="flex items-center gap-3">
-                ${statusBadge(r.status)}
-                <div class="flex gap-2">
-                  <a href="/reports/view/${r.report_token}" target="_blank" class="btn-secondary text-xs">
-                    <i class="fas fa-eye mr-1"></i>View
-                  </a>
-                  ${r.status === 'generated' ? `<button onclick="sendReport(${r.id})" class="btn-primary text-xs">
-                    <i class="fas fa-paper-plane mr-1"></i>Send
-                  </button>` : ''}
-                </div>
-              </div>
-            </div>
-            <div class="grid grid-cols-5 gap-3 mt-4 pt-3 border-t border-gray-50">
-              ${[
-                ['Improved', r.keywords_improved, 'text-green-600'],
-                ['Declined', r.keywords_declined, 'text-red-500'],
-                ['Top 10', r.top10_keywords, 'text-blue-600'],
-                ['Top 3', r.top3_keywords, 'text-yellow-600'],
-                ['LLM Mentions', r.llm_mentions, 'text-purple-600'],
-              ].map(([l, v, c]) => `
-                <div class="text-center">
-                  <div class="text-xl font-bold ${c}">${v || 0}</div>
-                  <div class="text-xs text-gray-400">${l}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `).join('')}
-    </div>
-    ${renderGenerateReportModal()}
-  `;
-}
-
-// ==============================
-// DATAFORSEO TOOLS
-// ==============================
-function renderDataForSEO() {
-  const status = state.dataforseoStatus;
-  return `
-    <div class="space-y-6">
-      <div class="card ${status?.connected ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'} border">
-        <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-xl ${status?.connected ? 'bg-green-100' : 'bg-yellow-100'} flex items-center justify-center">
-            <i class="fas fa-database ${status?.connected ? 'text-green-600' : 'text-yellow-600'} text-xl"></i>
-          </div>
-          <div>
-            <h3 class="font-semibold text-gray-900">DataForSEO Connection Status</h3>
-            ${status?.connected
-              ? `<p class="text-sm text-green-600"><i class="fas fa-check-circle mr-1"></i>Live Mode — Connected as ${status.login} · Balance: ${status.credits}</p>`
-              : `<p class="text-sm text-yellow-700"><i class="fas fa-exclamation-triangle mr-1"></i>Demo Mode — Add DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD to enable live data</p>`}
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Keyword Research Tool -->
-        <div class="card">
-          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-search text-blue-500 mr-2"></i>Keyword Research</h3>
-          <div class="space-y-3">
-            <input type="text" id="kwResearchInput" class="input-field" placeholder="Enter seed keyword...">
-            <select id="kwResearchLocation" class="input-field">
-              <option value="2036">Australia</option>
-              <option value="2840" selected>United States</option>
-              <option value="2826">United Kingdom</option>
-              <option value="2124">Canada</option>
-              <option value="2554">New Zealand</option>
-            </select>
-            <button onclick="runKeywordResearch()" class="btn-primary w-full"><i class="fas fa-search mr-2"></i>Research Keywords</button>
-          </div>
-          <div id="kwResearchResults" class="mt-4 space-y-1 max-h-60 overflow-y-auto hidden">
-            <!-- Results populated here -->
-          </div>
-        </div>
-
-        <!-- SERP Analysis Tool -->
-        <div class="card">
-          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-list-ol text-green-500 mr-2"></i>SERP Analysis</h3>
-          <div class="space-y-3">
-            <input type="text" id="serpAnalysisInput" class="input-field" placeholder="Enter keyword to analyze...">
-            <select id="serpLocation" class="input-field">
-              <option value="2036">Australia</option>
-              <option value="2840" selected>United States</option>
-              <option value="2826">United Kingdom</option>
-              <option value="2124">Canada</option>
-            </select>
-            <button onclick="runSerpAnalysis()" class="btn-primary w-full"><i class="fas fa-chart-bar mr-2"></i>Analyze SERP</button>
-          </div>
-          <div id="serpResults" class="mt-4 space-y-2 max-h-60 overflow-y-auto hidden"></div>
-        </div>
-
-        <!-- Competitor Analysis -->
-        <div class="card">
-          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-chess text-purple-500 mr-2"></i>Competitor Analysis</h3>
-          <div class="space-y-3">
-            <input type="text" id="compAnalysisInput" class="input-field" placeholder="Enter domain (e.g. competitor.com.au)">
-            <button onclick="runCompetitorAnalysis()" class="btn-primary w-full"><i class="fas fa-crosshairs mr-2"></i>Analyze Competitor</button>
-          </div>
-          <div id="compResults" class="mt-4 hidden"></div>
-        </div>
-
-        <!-- Backlink Checker -->
-        <div class="card">
-          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-link text-orange-500 mr-2"></i>Backlink Checker</h3>
-          <div class="space-y-3">
-            <input type="text" id="backlinkInput" class="input-field" placeholder="Enter domain to check...">
-            <button onclick="runBacklinkCheck()" class="btn-primary w-full"><i class="fas fa-search mr-2"></i>Check Backlinks</button>
-          </div>
-          <div id="backlinkResults" class="mt-4 hidden"></div>
-        </div>
-      </div>
+      ${renderNewWpBlockModal(wp.id)}
     </div>
   `;
 }
 
-// ==============================
-// MODALS
-// ==============================
-function renderNewCampaignModal() {
+function renderNewWpModal() {
   return `
-    <div id="new_campaign_modal" class="modal-overlay hidden">
+    <div id="new_wp_modal" class="modal-overlay hidden">
       <div class="modal-box p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold">New Campaign</h3>
-          <button onclick="closeModal('new_campaign_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900">New WordPress Project</h3>
+          <button onclick="closeModal('new_wp_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
         </div>
         <div class="space-y-4">
-          <div><label class="block text-sm font-medium mb-1">Client</label>
-            <select id="ncClient" class="input-field">
-              ${(state.clients || []).map(c => `<option value="${c.id}">${c.company_name}</option>`).join('')}
-            </select>
-          </div>
-          <div><label class="block text-sm font-medium mb-1">Campaign Name</label>
-            <input type="text" id="ncName" class="input-field" placeholder="Apex Plumbing Organic SEO">
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
+            <select id="wpClientId" class="input-field">
+              <option value="">Select client...</option>
+              ${(state.clients||[]).map(cl => `<option value="${cl.id}">${cl.company_name}</option>`).join('')}
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+            <input type="text" id="wpProjectName" class="input-field" placeholder="New Website Redesign 2025"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Project Type</label>
+              <select id="wpProjectType" class="input-field">
+                <option value="new_site">New Site</option>
+                <option value="redesign">Redesign</option>
+                <option value="plugin_dev">Plugin Dev</option>
+                <option value="consultancy">Consultancy</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="migration">Migration</option>
+              </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Budget ($)</label>
+              <input type="number" id="wpBudget" class="input-field" placeholder="5000"></div>
           </div>
           <div class="grid grid-cols-2 gap-3">
-            <div><label class="block text-sm font-medium mb-1">Type</label>
-              <select id="ncType" class="input-field">
-                <option value="organic_seo">Organic SEO</option>
-                <option value="local_seo">Local SEO</option>
-                <option value="content">Content</option>
-                <option value="technical_seo">Technical SEO</option>
-                <option value="full_service">Full Service</option>
-              </select>
-            </div>
-            <div><label class="block text-sm font-medium mb-1">Start Date</label>
-              <input type="date" id="ncStart" class="input-field" value="${new Date().toISOString().slice(0,10)}">
-            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Theme</label>
+              <input type="text" id="wpTheme" class="input-field" placeholder="Astra, GeneratePress..."></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Page Builder</label>
+              <select id="wpBuilder" class="input-field">
+                <option value="elementor">Elementor</option>
+                <option value="gutenberg">Gutenberg (Block Editor)</option>
+                <option value="divi">Divi</option>
+                <option value="beaverbuilder">Beaver Builder</option>
+                <option value="wpbakery">WPBakery</option>
+                <option value="custom">Custom</option>
+              </select></div>
           </div>
-          <div><label class="block text-sm font-medium mb-1">Monthly Investment ($)</label>
-            <input type="number" id="ncInvestment" class="input-field" placeholder="3000">
-          </div>
-          <div><label class="block text-sm font-medium mb-1">Goals</label>
-            <textarea id="ncGoals" class="input-field" rows="2"></textarea>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Go-Live Date</label>
+            <input type="date" id="wpGoLive" class="input-field"></div>
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="wpDefaultBlocks" class="rounded" checked>
+            <label class="text-sm text-gray-700">Add default implementation blocks automatically</label>
           </div>
         </div>
         <div class="flex gap-3 mt-5">
-          <button onclick="closeModal('new_campaign_modal')" class="btn-secondary flex-1">Cancel</button>
-          <button onclick="saveNewCampaign()" class="btn-primary flex-1">Create Campaign</button>
+          <button onclick="closeModal('new_wp_modal')" class="btn-secondary flex-1">Cancel</button>
+          <button onclick="saveWpProject()" class="btn-primary flex-1"><i class="fab fa-wordpress mr-2"></i>Create Project</button>
         </div>
       </div>
+    </div>
+  `;
+}
+
+function renderNewWpBlockModal(projectId) {
+  return `
+    <div id="new_wp_block_modal" class="modal-overlay hidden">
+      <div class="modal-box p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900">Add Implementation Block</h3>
+          <button onclick="closeModal('new_wp_block_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-4">
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Block Type</label>
+            <select id="newBlockType" class="input-field" onchange="prefillBlockName(this.value)">
+              <option value="homepage">Homepage</option>
+              <option value="about_page">About Page</option>
+              <option value="service_page">Service Page</option>
+              <option value="contact_page">Contact Page</option>
+              <option value="blog_setup">Blog Setup</option>
+              <option value="landing_page">Landing Page</option>
+              <option value="calculator_tool">Calculator Tool</option>
+              <option value="lead_form">Lead Capture Form</option>
+              <option value="booking_system">Booking System</option>
+              <option value="woocommerce_setup">WooCommerce Setup</option>
+              <option value="seo_setup">SEO Foundation Setup</option>
+              <option value="speed_optimisation">Speed Optimisation</option>
+              <option value="security_hardening">Security Hardening</option>
+              <option value="backup_setup">Backup Setup</option>
+              <option value="google_analytics">Google Analytics 4 + GSC</option>
+              <option value="schema_markup">Advanced Schema Markup</option>
+              <option value="custom">Custom</option>
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Block Name</label>
+            <input type="text" id="newBlockName" class="input-field"></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea id="newBlockDesc" class="input-field" rows="2"></textarea></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Estimated Hours</label>
+              <input type="number" id="newBlockHours" class="input-field" placeholder="4" step="0.5"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+              <input type="number" id="newBlockPrice" class="input-field" placeholder="0"></div>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-5">
+          <button onclick="closeModal('new_wp_block_modal')" class="btn-secondary flex-1">Cancel</button>
+          <button onclick="saveWpBlock(${projectId})" class="btn-primary flex-1"><i class="fas fa-plus mr-2"></i>Add Block</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ==============================
+// SOCIAL MEDIA
+// ==============================
+function renderSocial() {
+  if (!state.socialPosts) { loadSocialPosts(); return loading(); }
+  const platforms = ['facebook','instagram','linkedin','twitter','google_business'];
+  const platformIcons = { facebook: 'fa-facebook', instagram: 'fa-instagram', linkedin: 'fa-linkedin', twitter: 'fa-twitter', google_business: 'fa-google' };
+
+  return `
+    <div class="space-y-6">
+      <!-- Platform filter tabs -->
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="filterSocial('')" class="px-4 py-2 rounded-xl text-sm font-medium ${!state.socialFilter ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">All</button>
+        ${platforms.map(p => `
+          <button onclick="filterSocial('${p}')" class="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${state.socialFilter === p ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">
+            <i class="fab ${platformIcons[p] || 'fa-share'}"></i>${p.replace(/_/g,' ')}
+          </button>
+        `).join('')}
+      </div>
+
+      <!-- Posts grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        ${(state.socialPosts||[]).length === 0 ? `
+          <div class="col-span-3 card text-center py-12 text-gray-400">
+            No social posts yet. <button onclick="openModal('new_social_modal')" class="text-blue-600 hover:underline ml-1">Create one</button>
+          </div>` :
+          (state.socialPosts||[]).map(post => `
+            <div class="card">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <i class="fab ${platformIcons[post.platform] || 'fa-share'} text-blue-500"></i>
+                  <span class="text-sm font-medium text-gray-700">${post.platform?.replace(/_/g,' ')}</span>
+                  ${statusBadge(post.status)}
+                </div>
+                <span class="text-xs text-gray-400">${post.scheduled_at ? post.scheduled_at.slice(0,10) : post.created_at?.slice(0,10)}</span>
+              </div>
+              <p class="text-sm text-gray-700 mb-2 line-clamp-3">${post.caption || '(No caption)'}</p>
+              ${post.hashtags ? `<p class="text-xs text-blue-500 mb-2 line-clamp-1">${post.hashtags}</p>` : ''}
+              <p class="text-xs text-gray-400">${post.company_name}</p>
+              ${post.status === 'published' ? `
+                <div class="flex gap-4 mt-2 text-xs text-gray-500 pt-2 border-t">
+                  <span><i class="fas fa-heart mr-1"></i>${post.likes || 0}</span>
+                  <span><i class="fas fa-comment mr-1"></i>${post.comments || 0}</span>
+                  <span><i class="fas fa-share mr-1"></i>${post.shares || 0}</span>
+                  ${post.reach ? `<span><i class="fas fa-eye mr-1"></i>${fmt(post.reach)}</span>` : ''}
+                </div>` : ''}
+            </div>
+          `).join('')}
+      </div>
+      ${renderNewSocialModal()}
+    </div>
+  `;
+}
+
+function renderNewSocialModal() {
+  return `
+    <div id="new_social_modal" class="modal-overlay hidden">
+      <div class="modal-box p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900">New Social Post</h3>
+          <button onclick="closeModal('new_social_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-4">
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
+            <select id="socialClientId" class="input-field">
+              <option value="">Select client...</option>
+              ${(state.clients||[]).map(cl => `<option value="${cl.id}">${cl.company_name}</option>`).join('')}
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Platform(s)</label>
+            <div class="flex gap-2 flex-wrap" id="platformCheckboxes">
+              ${['facebook','instagram','linkedin','twitter','google_business'].map(p => `
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" name="socialPlatform" value="${p}" class="rounded">
+                  <span class="text-sm">${p.replace(/_/g,' ')}</span>
+                </label>
+              `).join('')}
+            </div></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Post Type</label>
+            <select id="socialPostType" class="input-field">
+              <option value="organic">Organic Post</option>
+              <option value="story">Story</option>
+              <option value="reel">Reel</option>
+              <option value="carousel">Carousel</option>
+              <option value="video">Video</option>
+              <option value="testimonial">Testimonial</option>
+              <option value="blog_share">Blog Share</option>
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Caption</label>
+            <textarea id="socialCaption" class="input-field" rows="4" placeholder="Write your caption here..."></textarea></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Hashtags</label>
+            <input type="text" id="socialHashtags" class="input-field" placeholder="#sydney #plumber #homeservices"></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Schedule Date/Time</label>
+            <input type="datetime-local" id="socialScheduled" class="input-field"></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Link URL</label>
+            <input type="text" id="socialLinkUrl" class="input-field" placeholder="https://..."></div>
+        </div>
+        <div class="flex gap-3 mt-5">
+          <button onclick="closeModal('new_social_modal')" class="btn-secondary flex-1">Cancel</button>
+          <button onclick="saveSocialPost()" class="btn-primary flex-1"><i class="fas fa-share-nodes mr-2"></i>Create Post(s)</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ==============================
+// PRESS RELEASES
+// ==============================
+function renderPress() {
+  if (!state.pressReleases) { loadPressReleases(); return loading(); }
+  return `
+    <div class="space-y-4">
+      ${(state.pressReleases||[]).length === 0 ? `
+        <div class="card text-center py-12">
+          <i class="fas fa-newspaper text-5xl text-gray-200 mb-4"></i>
+          <p class="text-gray-500 mb-2">No press releases yet</p>
+          <button onclick="navigate('new_press')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Write Press Release</button>
+        </div>` :
+        (state.pressReleases||[]).map(pr => `
+          <div class="card cursor-pointer hover:shadow-md transition" onclick="navigate('edit_press', {selectedPressRelease: ${JSON.stringify(pr).replace(/"/g,'&quot;')}})">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <h3 class="font-semibold text-gray-900">${pr.headline}</h3>
+                  ${statusBadge(pr.status)}
+                </div>
+                ${pr.subheadline ? `<p class="text-sm text-gray-500">${pr.subheadline}</p>` : ''}
+                <p class="text-xs text-gray-400 mt-1">${pr.company_name} · ${pr.distribution_date ? 'Distributing: ' + pr.distribution_date : 'Draft'}</p>
+              </div>
+              <div class="ml-4 text-right">
+                ${pr.published_urls ? '<span class="text-xs text-green-600"><i class="fas fa-check-circle mr-1"></i>Distributed</span>' : ''}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+    </div>
+  `;
+}
+
+function renderNewPressRelease() {
+  const cl = state.selectedClient;
+  return `
+    <div class="max-w-4xl space-y-6">
+      <button onclick="navigate('press')" class="text-sm text-gray-500 hover:text-blue-600">
+        <i class="fas fa-arrow-left mr-1"></i>Back to Press Releases
+      </button>
+      <div class="card">
+        <h2 class="text-lg font-bold text-gray-900 mb-5">Create Press Release</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
+            <select id="prClientId" class="input-field">
+              <option value="">Select client...</option>
+              ${(state.clients||[]).map(c => `<option value="${c.id}" ${cl?.id == c.id ? 'selected' : ''}>${c.company_name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Topic / Story Angle</label>
+            <input type="text" id="prTopic" class="input-field" placeholder="e.g. Company wins industry award, launches new service">
+          </div>
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Key Message</label>
+            <input type="text" id="prKeyMessage" class="input-field" placeholder="e.g. major expansion into Queensland market">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Quote Person / Title</label>
+            <input type="text" id="prQuotePerson" class="input-field" placeholder="CEO, Managing Director...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Distribution Date</label>
+            <input type="date" id="prDistDate" class="input-field">
+          </div>
+        </div>
+        <button onclick="generatePressRelease()" class="btn-primary mt-4 w-full">
+          <i class="fas fa-magic mr-2"></i>Generate Press Release Template
+        </button>
+      </div>
+
+      <div id="prPreview" class="hidden card">
+        <h3 class="font-semibold text-gray-900 mb-4">Press Release — Edit & Review</h3>
+        <div class="space-y-4">
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Headline *</label>
+            <input type="text" id="prHeadline" class="input-field"></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Subheadline</label>
+            <input type="text" id="prSubheadline" class="input-field"></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Body Text</label>
+            <textarea id="prBody" class="input-field" rows="10"></textarea></div>
+          <div class="grid grid-cols-2 gap-4">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Quote</label>
+              <textarea id="prQuote" class="input-field" rows="3"></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Quote Attribution</label>
+              <input type="text" id="prQuoteAttrib" class="input-field"></div>
+          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Boilerplate (About the Company)</label>
+            <textarea id="prBoilerplate" class="input-field" rows="4"></textarea></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Contact Information</label>
+            <textarea id="prContact" class="input-field" rows="3"></textarea></div>
+          <div class="grid grid-cols-2 gap-4">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Target Publications</label>
+              <textarea id="prPublications" class="input-field" rows="2"></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">SEO Keywords</label>
+              <input type="text" id="prSeoKeywords" class="input-field"></div>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-5 pt-5 border-t">
+          <button onclick="savePressRelease('draft')" class="btn-secondary flex-1">Save as Draft</button>
+          <button onclick="savePressRelease('review')" class="btn-primary flex-1">
+            <i class="fas fa-check mr-2"></i>Save for Review
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ==============================
+// KEYWORDS / RANK TRACKING
+// ==============================
+function renderKeywords() {
+  if (!state.keywordData) { loadKeywords(); return loading(); }
+  const kws = state.keywordData;
+  return `
+    <div class="space-y-4">
+      <div class="flex gap-3 flex-wrap">
+        <select id="kwCampaignFilter" class="input-field w-48" onchange="filterKeywords()">
+          <option value="">All Campaigns</option>
+          ${(state.campaigns||[]).map(ca => `<option value="${ca.id}">${ca.name}</option>`).join('')}
+        </select>
+        <button onclick="trackAllRankings()" class="btn-primary"><i class="fas fa-sync-alt mr-2"></i>Track All Keywords</button>
+      </div>
+      <div class="card overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
+            <th class="px-3 py-2 rounded-l-lg">Keyword</th>
+            <th class="px-3 py-2">Client / Campaign</th>
+            <th class="px-3 py-2 text-center">Rank</th>
+            <th class="px-3 py-2 text-center">Prev</th>
+            <th class="px-3 py-2 text-center">Change</th>
+            <th class="px-3 py-2">Volume</th>
+            <th class="px-3 py-2">KD</th>
+            <th class="px-3 py-2 rounded-r-lg">Priority</th>
+          </tr></thead>
+          <tbody class="divide-y divide-gray-50">
+            ${kws.length === 0 ? '<tr><td colspan="8" class="px-3 py-8 text-center text-gray-400">No keywords yet. Add keywords to a campaign to start tracking.</td></tr>' :
+              kws.map(kw => `
+                <tr class="hover:bg-gray-50">
+                  <td class="px-3 py-3">
+                    <div class="font-medium text-gray-900">${kw.keyword}</div>
+                    ${kw.target_url ? `<div class="text-xs text-gray-400 truncate max-w-xs">${kw.target_url}</div>` : ''}
+                  </td>
+                  <td class="px-3 py-3"><div class="text-xs text-gray-700">${kw.company_name || ''}</div><div class="text-xs text-gray-400">${kw.campaign_name || ''}</div></td>
+                  <td class="px-3 py-3 text-center">${rankBadge(kw.current_rank)}</td>
+                  <td class="px-3 py-3 text-center text-gray-400 text-xs">${kw.previous_rank || '–'}</td>
+                  <td class="px-3 py-3 text-center">${rankChange(kw.current_rank, kw.previous_rank)}</td>
+                  <td class="px-3 py-3 text-xs text-gray-500">${kw.monthly_search_volume ? kw.monthly_search_volume.toLocaleString() : '–'}</td>
+                  <td class="px-3 py-3 text-xs ${kw.keyword_difficulty > 70 ? 'text-red-500' : kw.keyword_difficulty > 40 ? 'text-yellow-600' : 'text-green-600'}">${kw.keyword_difficulty || '–'}</td>
+                  <td class="px-3 py-3">${statusBadge(kw.priority)}</td>
+                </tr>
+              `).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${renderNewKeywordModal()}
     </div>
   `;
 }
@@ -1244,86 +1750,220 @@ function renderNewKeywordModal() {
   return `
     <div id="new_keyword_modal" class="modal-overlay hidden">
       <div class="modal-box p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold">Add Keywords</h3>
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900">Add Keywords</h3>
           <button onclick="closeModal('new_keyword_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
         </div>
         <div class="space-y-4">
-          <div><label class="block text-sm font-medium mb-1">Campaign</label>
-            <select id="nkCampaign" class="input-field" onchange="updateNkClient(this.value)">
-              ${(state.campaigns || []).map(c => `<option value="${c.id}" data-client="${c.client_id}">${c.name} (${c.company_name})</option>`).join('')}
-            </select>
-          </div>
-          <input type="hidden" id="nkClientId">
-          <div><label class="block text-sm font-medium mb-1">Keywords (one per line)</label>
-            <textarea id="nkKeywords" class="input-field" rows="5" placeholder="plumber sydney&#10;emergency plumber sydney&#10;blocked drain sydney"></textarea>
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <div><label class="block text-sm font-medium mb-1">Location</label>
-              <select id="nkLocation" class="input-field">
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Campaign</label>
+            <select id="newKwCampaign" class="input-field">
+              <option value="">Select campaign...</option>
+              ${(state.campaigns||[]).map(ca => `<option value="${ca.id}" data-client="${ca.client_id}">${ca.name} (${ca.company_name})</option>`).join('')}
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Keywords (one per line)</label>
+            <textarea id="newKwList" class="input-field" rows="6" placeholder="plumber sydney&#10;emergency plumber sydney&#10;blocked drain sydney"></textarea></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+              <select id="newKwLocation" class="input-field">
                 <option value="2036">Australia</option>
                 <option value="2840">United States</option>
                 <option value="2826">United Kingdom</option>
-              </select>
-            </div>
-            <div><label class="block text-sm font-medium mb-1">Group</label>
-              <input type="text" id="nkGroup" class="input-field" placeholder="Core Services">
-            </div>
-            <div><label class="block text-sm font-medium mb-1">Priority</label>
-              <select id="nkPriority" class="input-field">
+                <option value="2124">Canada</option>
+              </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select id="newKwPriority" class="input-field">
                 <option value="high">High</option>
                 <option value="medium" selected>Medium</option>
                 <option value="low">Low</option>
-              </select>
-            </div>
+              </select></div>
           </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Target URL (optional)</label>
+            <input type="text" id="newKwUrl" class="input-field" placeholder="https://..."></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Keyword Group (optional)</label>
+            <input type="text" id="newKwGroup" class="input-field" placeholder="e.g. Service, Location, Brand"></div>
         </div>
         <div class="flex gap-3 mt-5">
           <button onclick="closeModal('new_keyword_modal')" class="btn-secondary flex-1">Cancel</button>
-          <button onclick="saveNewKeywords()" class="btn-primary flex-1">Add Keywords</button>
+          <button onclick="saveKeywords()" class="btn-primary flex-1"><i class="fas fa-plus mr-2"></i>Add Keywords</button>
         </div>
       </div>
     </div>
   `;
 }
 
-function renderNewLLMModal() {
+// ==============================
+// LLM / AI VISIBILITY
+// ==============================
+function renderLLM() {
+  if (!state.llmData) { loadLLM(); return loading(); }
+  const { prompts = [], recent_mentions = [] } = state.llmData;
+  return `
+    <div class="space-y-6">
+      <div class="card">
+        <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-robot text-purple-500 mr-2"></i>AI/LLM Visibility Prompts</h3>
+        ${prompts.length === 0 ? '<p class="text-gray-400 text-sm">No prompts configured. Add prompts to track AI visibility.</p>' :
+          `<div class="space-y-3">
+            ${prompts.map(p => `
+              <div class="p-4 border border-gray-100 rounded-xl hover:bg-gray-50">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-800">"${p.prompt_text}"</p>
+                    <p class="text-xs text-gray-400 mt-1">Target: ${p.target_brand || 'N/A'} · Model: ${p.llm_model} · Campaign: ${p.campaign_name || p.campaign_id}</p>
+                  </div>
+                  <div class="ml-4 flex flex-col items-end gap-1">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${p.latest_mentioned ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+                      ${p.latest_mentioned ? '✓ Mentioned' : '✗ Not Mentioned'}
+                    </span>
+                    ${p.latest_sentiment ? statusBadge(p.latest_sentiment) : ''}
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>`}
+      </div>
+
+      ${recent_mentions.length > 0 ? `
+        <div class="card">
+          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-history text-blue-500 mr-2"></i>Recent LLM Mention History</h3>
+          <div class="space-y-3">
+            ${recent_mentions.map(m => `
+              <div class="p-3 border border-gray-100 rounded-xl">
+                <div class="flex items-start justify-between mb-2">
+                  <p class="text-xs text-gray-500 truncate">"${m.prompt_text}"</p>
+                  <span class="ml-2 text-xs ${m.is_mentioned ? 'text-green-600' : 'text-gray-400'}">${m.is_mentioned ? '✓ Mentioned' : '✗ Not'}</span>
+                </div>
+                ${m.response_snippet ? `<p class="text-xs text-gray-600 italic">"${m.response_snippet}"</p>` : ''}
+                <p class="text-xs text-gray-400 mt-1">${m.company_name || ''} · ${ago(m.tracked_at)}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>` : ''}
+
+      ${renderNewLlmModal()}
+    </div>
+  `;
+}
+
+function renderNewLlmModal() {
   return `
     <div id="new_llm_modal" class="modal-overlay hidden">
       <div class="modal-box p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold">Add LLM Prompt</h3>
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900">Add LLM Visibility Prompt</h3>
           <button onclick="closeModal('new_llm_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
         </div>
         <div class="space-y-4">
-          <div><label class="block text-sm font-medium mb-1">Campaign</label>
-            <select id="nlCampaign" class="input-field" onchange="updateNlClient(this.value)">
-              ${(state.campaigns || []).map(c => `<option value="${c.id}" data-client="${c.client_id}">${c.name} (${c.company_name})</option>`).join('')}
-            </select>
-          </div>
-          <input type="hidden" id="nlClientId">
-          <div><label class="block text-sm font-medium mb-1">Prompt Text</label>
-            <textarea id="nlPrompt" class="input-field" rows="3" placeholder="Who are the best plumbers in Sydney?"></textarea>
-          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Campaign</label>
+            <select id="newLlmCampaign" class="input-field">
+              <option value="">Select campaign...</option>
+              ${(state.campaigns||[]).map(ca => `<option value="${ca.id}" data-client="${ca.client_id}">${ca.name}</option>`).join('')}
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Prompt / Question to Track</label>
+            <textarea id="newLlmPrompt" class="input-field" rows="3" placeholder="Who are the best plumbers in Sydney for emergency plumbing?"></textarea></div>
           <div class="grid grid-cols-2 gap-3">
-            <div><label class="block text-sm font-medium mb-1">Target Brand</label>
-              <input type="text" id="nlBrand" class="input-field" placeholder="Apex Plumbing">
-            </div>
-            <div><label class="block text-sm font-medium mb-1">LLM Model</label>
-              <select id="nlModel" class="input-field">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Target Brand</label>
+              <input type="text" id="newLlmBrand" class="input-field" placeholder="Company name to track"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">LLM Model</label>
+              <select id="newLlmModel" class="input-field">
                 <option value="chatgpt">ChatGPT</option>
-                <option value="gemini">Gemini</option>
-                <option value="claude">Claude</option>
+                <option value="gemini">Google Gemini</option>
+                <option value="claude">Claude (Anthropic)</option>
                 <option value="perplexity">Perplexity</option>
-              </select>
-            </div>
+                <option value="copilot">Microsoft Copilot</option>
+              </select></div>
           </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select id="newLlmCategory" class="input-field">
+              <option value="brand_mention">Brand Mention</option>
+              <option value="service_query">Service Query</option>
+              <option value="local_query">Local Query</option>
+              <option value="competitor_comparison">Competitor Comparison</option>
+              <option value="industry_query">Industry Query</option>
+            </select></div>
         </div>
         <div class="flex gap-3 mt-5">
           <button onclick="closeModal('new_llm_modal')" class="btn-secondary flex-1">Cancel</button>
-          <button onclick="saveNewLLMPrompt()" class="btn-primary flex-1">Add Prompt</button>
+          <button onclick="saveLlmPrompt()" class="btn-primary flex-1"><i class="fas fa-plus mr-2"></i>Add Prompt</button>
         </div>
       </div>
+    </div>
+  `;
+}
+
+// ==============================
+// CONTENT
+// ==============================
+function renderContent() {
+  if (!state.contentItems) { loadContent(); return loading(); }
+  const items = state.contentItems || [];
+  const contentTypeIcons = {
+    blog_post: 'fa-blog', landing_page: 'fa-file-alt', guide: 'fa-book',
+    whitepaper: 'fa-file-pdf', press_release: 'fa-newspaper',
+    social_post: 'fa-share-nodes', infographic: 'fa-image',
+    video_script: 'fa-video', faq_page: 'fa-question-circle',
+    meta_optimization: 'fa-tags', guestpost: 'fa-external-link-alt'
+  };
+
+  return `
+    <div class="space-y-4">
+      <div class="flex gap-3 flex-wrap">
+        <select id="contentStatusFilter" class="input-field w-40" onchange="filterContent()">
+          <option value="">All Statuses</option>
+          <option value="planned">Planned</option>
+          <option value="briefed">Briefed</option>
+          <option value="in_progress">In Progress</option>
+          <option value="review">In Review</option>
+          <option value="published">Published</option>
+        </select>
+        <select id="contentTypeFilter" class="input-field w-44" onchange="filterContent()">
+          <option value="">All Types</option>
+          <option value="blog_post">Blog Post</option>
+          <option value="landing_page">Landing Page</option>
+          <option value="guide">Guide</option>
+          <option value="whitepaper">White Paper</option>
+          <option value="press_release">Press Release</option>
+          <option value="social_post">Social Post</option>
+          <option value="infographic">Infographic</option>
+          <option value="video_script">Video Script</option>
+        </select>
+      </div>
+      <div class="space-y-2" id="contentList">
+        ${items.length === 0 ? `<div class="card text-center py-12 text-gray-400">No content items yet.</div>` :
+          items.map(ci => `
+            <div class="card hover:shadow-md transition">
+              <div class="flex items-start justify-between">
+                <div class="flex gap-3 items-start flex-1">
+                  <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i class="fas ${contentTypeIcons[ci.content_type] || 'fa-file'} text-green-600 text-xs"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <h3 class="font-medium text-gray-900">${ci.title}</h3>
+                      ${statusBadge(ci.status)}
+                    </div>
+                    <p class="text-xs text-gray-500 mt-0.5">${ci.company_name} · ${ci.campaign_name} · ${ci.content_type?.replace(/_/g,' ')}</p>
+                    ${ci.target_keyword ? `<p class="text-xs text-blue-500 mt-0.5"><i class="fas fa-key mr-1"></i>${ci.target_keyword}</p>` : ''}
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 ml-3 flex-shrink-0">
+                  <div class="text-right">
+                    <p class="text-xs text-gray-500">${ci.word_count_target ? ci.word_count_target + ' words' : ''}</p>
+                    <p class="text-xs text-gray-400">Due: ${ci.due_date || 'TBD'}</p>
+                    ${ci.assigned_to ? `<p class="text-xs text-gray-400">${ci.assigned_to}</p>` : ''}
+                  </div>
+                  <div class="flex gap-1">
+                    <button onclick="openBriefModal(${JSON.stringify(ci).replace(/"/g,'&quot;')})" class="text-xs btn-secondary px-2 py-1"><i class="fas fa-align-left mr-1"></i>Brief</button>
+                    <select class="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600" onchange="updateContentStatus(${ci.id}, this.value)">
+                      ${['planned','briefed','in_progress','review','approved','published','cancelled'].map(s => `<option value="${s}" ${ci.status === s ? 'selected' : ''}>${s.replace(/_/g,' ')}</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+      </div>
+      ${renderNewContentModal()}
+      ${renderBriefModal()}
     </div>
   `;
 }
@@ -1332,102 +1972,72 @@ function renderNewContentModal() {
   return `
     <div id="new_content_modal" class="modal-overlay hidden">
       <div class="modal-box p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold">New Content Item</h3>
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900">New Content Item</h3>
           <button onclick="closeModal('new_content_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
         </div>
         <div class="space-y-4">
-          <div><label class="block text-sm font-medium mb-1">Campaign</label>
-            <select id="ncoCampaign" class="input-field" onchange="updateNcoClient(this.value)">
-              ${(state.campaigns || []).map(c => `<option value="${c.id}" data-client="${c.client_id}">${c.name} (${c.company_name})</option>`).join('')}
-            </select>
-          </div>
-          <input type="hidden" id="ncoClientId">
-          <div><label class="block text-sm font-medium mb-1">Title *</label>
-            <input type="text" id="ncoTitle" class="input-field" placeholder="How to Choose the Best Plumber in Sydney">
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Campaign</label>
+            <select id="ncoClient" class="input-field" onchange="loadCampaignsForContent(this.value)">
+              <option value="">Select client...</option>
+              ${(state.clients||[]).map(cl => `<option value="${cl.id}">${cl.company_name}</option>`).join('')}
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Campaign</label>
+            <select id="ncoCampaign" class="input-field">
+              <option value="">Select campaign first...</option>
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Content Type</label>
+            <select id="ncoType" class="input-field">
+              <option value="blog_post">Blog Post</option>
+              <option value="landing_page">SEO Landing Page</option>
+              <option value="guide">Guide / How-To</option>
+              <option value="whitepaper">White Paper</option>
+              <option value="press_release">Press Release</option>
+              <option value="social_post">Social Post</option>
+              <option value="infographic">Infographic</option>
+              <option value="video_script">Video Script</option>
+              <option value="faq_page">FAQ Page</option>
+              <option value="meta_optimization">Meta Optimisation</option>
+              <option value="guestpost">Guest Post</option>
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input type="text" id="ncoTitle" class="input-field" placeholder="Content title"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Target Keyword</label>
+              <input type="text" id="ncoKeyword" class="input-field" placeholder="primary keyword"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Word Count</label>
+              <input type="number" id="ncoWords" class="input-field" value="1500"></div>
           </div>
           <div class="grid grid-cols-2 gap-3">
-            <div><label class="block text-sm font-medium mb-1">Content Type</label>
-              <select id="ncoType" class="input-field">
-                <option value="blog_post">Blog Post</option>
-                <option value="landing_page">Landing Page</option>
-                <option value="faq_page">FAQ Page</option>
-                <option value="meta_optimization">Meta Optimization</option>
-                <option value="guestpost">Guest Post</option>
-                <option value="press_release">Press Release</option>
-              </select>
-            </div>
-            <div><label class="block text-sm font-medium mb-1">Target Keyword</label>
-              <input type="text" id="ncoKeyword" class="input-field" placeholder="plumber sydney">
-            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+              <input type="date" id="ncoDue" class="input-field"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+              <input type="text" id="ncoAssigned" class="input-field" placeholder="Writer name"></div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div><label class="block text-sm font-medium mb-1">Word Count</label>
-              <input type="number" id="ncoWords" class="input-field" value="1500">
-            </div>
-            <div><label class="block text-sm font-medium mb-1">Due Date</label>
-              <input type="date" id="ncoDue" class="input-field">
-            </div>
-          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Target URL</label>
+            <input type="text" id="ncoUrl" class="input-field" placeholder="https://..."></div>
         </div>
         <div class="flex gap-3 mt-5">
-          <button onclick="closeModal('new_content_modal')" class="btn-secondary flex-1">Cancel</button>
-          <button onclick="autoGenerateBrief()" class="btn-secondary flex-1"><i class="fas fa-magic mr-1"></i>Generate Brief</button>
-          <button onclick="saveNewContent()" class="btn-primary flex-1">Add Content</button>
+          <button onclick="autoGenerateBrief()" class="btn-secondary flex-1"><i class="fas fa-magic mr-1"></i>Auto-Brief</button>
+          <button onclick="saveNewContent()" class="btn-primary flex-1"><i class="fas fa-plus mr-2"></i>Add Content</button>
         </div>
       </div>
     </div>
   `;
 }
 
-function renderContentBriefModal() {
+function renderBriefModal() {
   return `
     <div id="content_brief_modal" class="modal-overlay hidden">
       <div class="modal-box p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold" id="briefModalTitle">Content Brief</h3>
-          <button onclick="closeModal('content_brief_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900" id="briefModalTitle">Content Brief</h3>
+          <button onclick="closeModal('content_brief_modal')" class="text-gray-400"><i class="fas fa-times"></i></button>
         </div>
-        <div id="briefContent" class="prose prose-sm max-w-none text-sm text-gray-700 whitespace-pre-wrap max-h-96 overflow-y-auto p-4 bg-gray-50 rounded-xl font-mono text-xs leading-relaxed"></div>
-        <div class="flex gap-3 mt-4">
-          <button onclick="closeModal('content_brief_modal')" class="btn-secondary flex-1">Close</button>
-          <button onclick="copyBrief()" class="btn-primary flex-1"><i class="fas fa-copy mr-1"></i>Copy Brief</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderGenerateReportModal() {
-  return `
-    <div id="generate_report_modal" class="modal-overlay hidden">
-      <div class="modal-box p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold">Generate Report</h3>
-          <button onclick="closeModal('generate_report_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="space-y-4">
-          <div><label class="block text-sm font-medium mb-1">Campaign</label>
-            <select id="grCampaign" class="input-field">
-              ${(state.campaigns || []).map(c => `<option value="${c.id}">${c.name} (${c.company_name})</option>`).join('')}
-            </select>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div><label class="block text-sm font-medium mb-1">Report Period</label>
-              <input type="text" id="grPeriod" class="input-field" placeholder="March 2026" value="${new Date().toLocaleString('en', {month:'long',year:'numeric'})}">
-            </div>
-            <div><label class="block text-sm font-medium mb-1">Report Type</label>
-              <select id="grType" class="input-field">
-                <option value="monthly" selected>Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="weekly">Weekly</option>
-              </select>
-            </div>
-          </div>
-        </div>
+        <div id="briefContent" class="text-sm text-gray-700 whitespace-pre-wrap max-h-96 overflow-y-auto bg-gray-50 p-4 rounded-xl"></div>
         <div class="flex gap-3 mt-5">
-          <button onclick="closeModal('generate_report_modal')" class="btn-secondary flex-1">Cancel</button>
-          <button onclick="doGenerateReport()" class="btn-primary flex-1"><i class="fas fa-magic mr-2"></i>Generate Report</button>
+          <button onclick="copyBrief()" class="btn-secondary flex-1"><i class="fas fa-copy mr-1"></i>Copy</button>
+          <button onclick="closeModal('content_brief_modal')" class="btn-primary flex-1">Close</button>
         </div>
       </div>
     </div>
@@ -1435,14 +2045,137 @@ function renderGenerateReportModal() {
 }
 
 // ==============================
-// DATA LOADING
+// REPORTS
+// ==============================
+function renderReports() {
+  if (!state.reports) { loadReports(); return loading(); }
+  return `
+    <div class="space-y-4">
+      ${(state.reports||[]).length === 0 ? `<div class="card text-center py-12 text-gray-400">No reports yet. Generate one from a campaign.</div>` :
+        (state.reports||[]).map(r => `
+          <div class="card flex items-center justify-between">
+            <div>
+              <h3 class="font-semibold text-gray-900">${r.company_name} — ${r.report_period}</h3>
+              <p class="text-sm text-gray-500">${r.campaign_name} · ${r.report_type} report</p>
+              <div class="flex gap-4 mt-2 text-xs text-gray-400">
+                <span>↑ ${r.keywords_improved} improved</span>
+                <span>★ ${r.top10_keywords} in top 10</span>
+                <span>📝 ${r.content_published} published</span>
+              </div>
+            </div>
+            <div class="flex gap-2 items-center">
+              ${statusBadge(r.status)}
+              ${r.report_token ? `
+                <a href="/reports/view/${r.report_token}" target="_blank" class="btn-secondary text-xs"><i class="fas fa-eye mr-1"></i>View</a>
+                <button onclick="sendReport(${r.id})" class="btn-primary text-xs"><i class="fas fa-paper-plane mr-1"></i>Send</button>
+              ` : ''}
+            </div>
+          </div>
+        `).join('')}
+    </div>
+  `;
+}
+
+// ==============================
+// DATAFORSEO TOOLS
+// ==============================
+function renderDataForSEO() {
+  return `
+    <div class="space-y-6">
+      <div class="flex items-center gap-3 p-4 rounded-xl ${state.dataforseoStatus?.connected ? 'bg-green-50 border border-green-100' : 'bg-yellow-50 border border-yellow-100'}">
+        <div class="w-10 h-10 rounded-full ${state.dataforseoStatus?.connected ? 'bg-green-100' : 'bg-yellow-100'} flex items-center justify-center">
+          <i class="fas fa-database ${state.dataforseoStatus?.connected ? 'text-green-600' : 'text-yellow-600'}"></i>
+        </div>
+        <div>
+          <p class="font-semibold ${state.dataforseoStatus?.connected ? 'text-green-800' : 'text-yellow-800'}">
+            ${state.dataforseoStatus?.connected ? 'Live Mode' : 'Demo Mode'}
+          </p>
+          <p class="text-xs text-gray-500">
+            ${state.dataforseoStatus?.email || 'Not configured'} ·
+            Balance: ${state.dataforseoStatus?.balance ? '$' + state.dataforseoStatus.balance : 'N/A'}
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Keyword Research -->
+        <div class="card">
+          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-search text-blue-500 mr-2"></i>Keyword Research</h3>
+          <div class="space-y-3">
+            <input type="text" id="kwResearchInput" class="input-field" placeholder="Enter seed keyword...">
+            <div class="flex gap-2">
+              <select id="kwResearchLocation" class="input-field flex-1">
+                <option value="2036">Australia</option>
+                <option value="2840">United States</option>
+                <option value="2826">United Kingdom</option>
+              </select>
+              <button onclick="runKeywordResearch()" class="btn-primary flex-shrink-0">
+                <i class="fas fa-search mr-2"></i>Research
+              </button>
+            </div>
+          </div>
+          <div id="kwResearchResults" class="hidden mt-4 max-h-80 overflow-y-auto"></div>
+        </div>
+
+        <!-- SERP Analysis -->
+        <div class="card">
+          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-chart-bar text-green-500 mr-2"></i>SERP Analysis</h3>
+          <div class="space-y-3">
+            <input type="text" id="serpAnalysisInput" class="input-field" placeholder="Enter keyword to analyze...">
+            <div class="flex gap-2">
+              <select id="serpLocation" class="input-field flex-1">
+                <option value="2036">Australia</option>
+                <option value="2840">United States</option>
+              </select>
+              <button onclick="runSerpAnalysis()" class="btn-primary flex-shrink-0">
+                <i class="fas fa-chart-bar mr-2"></i>Analyze
+              </button>
+            </div>
+          </div>
+          <div id="serpResults" class="hidden mt-4 max-h-80 overflow-y-auto"></div>
+        </div>
+
+        <!-- Competitor Analysis -->
+        <div class="card">
+          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-crosshairs text-red-500 mr-2"></i>Competitor Analysis</h3>
+          <div class="space-y-3">
+            <input type="text" id="compAnalysisInput" class="input-field" placeholder="Enter domain (e.g. competitor.com.au)">
+            <button onclick="runCompetitorAnalysis()" class="btn-primary w-full">
+              <i class="fas fa-crosshairs mr-2"></i>Analyze Competitor
+            </button>
+          </div>
+          <div id="compResults" class="hidden mt-4"></div>
+        </div>
+
+        <!-- Backlink Checker -->
+        <div class="card">
+          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-link text-purple-500 mr-2"></i>Backlink Checker</h3>
+          <div class="space-y-3">
+            <input type="text" id="backlinkInput" class="input-field" placeholder="Enter domain to check...">
+            <button onclick="runBacklinkCheck()" class="btn-primary w-full">
+              <i class="fas fa-search mr-2"></i>Check Backlinks
+            </button>
+          </div>
+          <div id="backlinkResults" class="hidden mt-4"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ==============================
+// DATA LOADING FUNCTIONS
 // ==============================
 async function loadDashboard() {
   try {
-    const res = await API.get('/dashboard/overview');
-    state.dashboardData = res.data;
+    const [dashRes, dfsRes] = await Promise.all([
+      API.get('/dashboard/overview'),
+      API.get('/dataforseo/status').catch(() => ({ data: { connected: false } }))
+    ]);
+    state.dashboardData = dashRes.data;
+    state.dataforseoStatus = dfsRes.data;
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error('Dashboard load failed:', e); }
 }
 
 async function loadClients() {
@@ -1450,15 +2183,15 @@ async function loadClients() {
     const res = await API.get('/clients');
     state.clients = res.data;
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error('Clients load failed:', e); }
 }
 
 async function loadClientDetail(id) {
   try {
-    const res = await API.get(`/clients/${id}`);
-    state.selectedClient = res.data;
+    const res = await API.get('/clients/' + id);
+    state.selectedClient = { ...res.data };
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { toast('Failed to load client details', 'error'); }
 }
 
 async function loadCampaigns() {
@@ -1466,18 +2199,15 @@ async function loadCampaigns() {
     const res = await API.get('/campaigns');
     state.campaigns = res.data;
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error('Campaigns load failed:', e); }
 }
 
 async function loadCampaignDetail(id) {
   try {
-    const res = await API.get(`/campaigns/${id}`);
+    const res = await API.get('/campaigns/' + id);
     state.selectedCampaign = { ...res.data, _loaded: true };
-    // Load current ranks
-    const ranks = await API.get(`/rank-tracking/campaign/${id}`);
-    state.selectedCampaign.keywords = ranks.data.keywords;
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { toast('Failed to load campaign', 'error'); }
 }
 
 async function loadProposals() {
@@ -1485,93 +2215,170 @@ async function loadProposals() {
     const res = await API.get('/proposals');
     state.proposals = res.data;
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error('Proposals load failed:', e); }
+}
+
+async function loadBilling() {
+  try {
+    const res = await API.get('/payments/billing/overview');
+    state.billingData = res.data;
+    render();
+  } catch (e) { console.error('Billing load failed:', e); }
 }
 
 async function loadKeywords() {
   try {
-    const [kwRes, camRes] = await Promise.all([
-      API.get('/keywords'),
-      state.campaigns?.length ? Promise.resolve({ data: state.campaigns }) : API.get('/campaigns')
-    ]);
-    state.keywords = kwRes.data;
-    state.campaigns = camRes.data;
+    const res = await API.get('/keywords');
+    state.keywordData = res.data;
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error('Keywords load failed:', e); }
 }
 
 async function loadLLM() {
   try {
-    const [llmRes, camRes] = await Promise.all([
-      API.get('/llm/prompts'),
-      state.campaigns?.length ? Promise.resolve({ data: state.campaigns }) : API.get('/campaigns')
-    ]);
-    state.llmData = llmRes.data;
-    state.campaigns = camRes.data;
+    const res = await API.get('/llm');
+    state.llmData = res.data;
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error('LLM load failed:', e); }
 }
 
 async function loadContent() {
   try {
-    const [res, camRes] = await Promise.all([
-      API.get('/content'),
-      state.campaigns?.length ? Promise.resolve({ data: state.campaigns }) : API.get('/campaigns')
-    ]);
+    const res = await API.get('/content');
     state.contentItems = res.data;
-    state.campaigns = camRes.data;
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error('Content load failed:', e); }
 }
 
 async function loadReports() {
   try {
-    const [res, camRes] = await Promise.all([
-      API.get('/reports'),
-      state.campaigns?.length ? Promise.resolve({ data: state.campaigns }) : API.get('/campaigns')
-    ]);
+    const res = await API.get('/reports');
     state.reports = res.data;
-    state.campaigns = camRes.data;
     render();
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error('Reports load failed:', e); }
 }
 
-async function checkDataForSEOStatus() {
+async function loadWpProjects() {
   try {
-    const res = await API.get('/dataforseo/status');
-    state.dataforseoStatus = res.data;
-  } catch (e) {}
+    const res = await API.get('/wordpress');
+    state.wpProjects = res.data;
+    render();
+  } catch (e) { console.error('WP projects load failed:', e); }
+}
+
+async function loadWpProjectDetail(id) {
+  try {
+    const res = await API.get('/wordpress/' + id);
+    state.selectedWpProject = { ...res.data, _loaded: true };
+    render();
+  } catch (e) { toast('Failed to load project', 'error'); }
+}
+
+async function loadSocialPosts() {
+  try {
+    const params = state.socialFilter ? `?platform=${state.socialFilter}` : '';
+    const res = await API.get('/social' + params);
+    state.socialPosts = res.data;
+    render();
+  } catch (e) { console.error('Social load failed:', e); }
+}
+
+async function loadPressReleases() {
+  try {
+    const res = await API.get('/press-releases');
+    state.pressReleases = res.data;
+    render();
+  } catch (e) { console.error('Press releases load failed:', e); }
 }
 
 // ==============================
-// ACTIONS
+// ACTION FUNCTIONS
 // ==============================
-async function saveNewClient() {
-  const data = {
-    company_name: document.getElementById('newClientCompany')?.value,
-    contact_name: document.getElementById('newClientContact')?.value,
-    contact_email: document.getElementById('newClientEmail')?.value,
-    contact_phone: document.getElementById('newClientPhone')?.value,
-    website: document.getElementById('newClientWebsite')?.value,
-    industry: document.getElementById('newClientIndustry')?.value,
-    location: document.getElementById('newClientLocation')?.value,
-    monthly_budget: document.getElementById('newClientBudget')?.value,
-    notes: document.getElementById('newClientNotes')?.value,
+
+// Client actions
+function getClientFormData() {
+  const f = id => document.getElementById(id)?.value || '';
+  return {
+    company_name: f('cl_company_name'), website: f('cl_website'), industry: f('cl_industry'),
+    abn: f('cl_abn'), status: f('cl_status'),
+    address: f('cl_address'), city: f('cl_city'), state: f('cl_state'),
+    postcode: f('cl_postcode'), country: f('cl_country'), location: f('cl_location'),
+    contact_name: f('cl_contact_name'), contact_email: f('cl_contact_email'),
+    contact_phone: f('cl_contact_phone'),
+    secondary_contact_name: f('cl_secondary_contact_name'),
+    secondary_contact_email: f('cl_secondary_contact_email'),
+    monthly_budget: parseFloat(f('cl_monthly_budget')) || 0,
+    account_manager: f('cl_account_manager'),
+    contract_start: f('cl_contract_start') || null, contract_end: f('cl_contract_end') || null,
+    referral_source: f('cl_referral_source'), timezone: f('cl_timezone'),
+    cms_platform: f('cl_cms_platform'), hosting_provider: f('cl_hosting_provider'),
+    ga4_property_id: f('cl_ga4_property_id'), gsc_property: f('cl_gsc_property'),
+    google_business_id: f('cl_google_business_id'),
+    linkedin_url: f('cl_linkedin_url'), facebook_url: f('cl_facebook_url'),
+    instagram_handle: f('cl_instagram_handle'), notes: f('cl_notes'),
   };
+}
+
+async function saveNewClient() {
+  const data = getClientFormData();
   if (!data.company_name || !data.contact_email || !data.website) {
-    toast('Please fill in required fields', 'error'); return;
+    toast('Company name, email and website are required', 'warning'); return;
   }
   try {
     await API.post('/clients', data);
-    toast('Client added successfully!');
-    state.clients = null;
+    state.clients = [];
+    toast('Client added!');
     navigate('clients');
-  } catch (e) { toast('Failed to add client', 'error'); }
+  } catch (e) { toast('Failed to save client', 'error'); }
 }
 
+async function saveEditClient(id) {
+  const data = getClientFormData();
+  if (!data.company_name || !data.contact_email || !data.website) {
+    toast('Company name, email and website are required', 'warning'); return;
+  }
+  try {
+    await API.put('/clients/' + id, data);
+    state.clients = [];
+    state.editingClient = null;
+    toast('Client updated!');
+    navigate('clients');
+  } catch (e) { toast('Failed to update client', 'error'); }
+}
+
+async function deleteClient(id) {
+  if (!confirm('Delete this client and all their data? This cannot be undone.')) return;
+  try {
+    await API.delete('/clients/' + id);
+    state.clients = [];
+    state.editingClient = null;
+    toast('Client deleted');
+    navigate('clients');
+  } catch (e) { toast('Failed to delete client', 'error'); }
+}
+
+// Campaign actions
+async function saveNewCampaign() {
+  const clientId = document.getElementById('newCampaignClient')?.value;
+  const name = document.getElementById('newCampaignName')?.value;
+  const type = document.getElementById('newCampaignType')?.value;
+  const investment = document.getElementById('newCampaignInvestment')?.value;
+  const startDate = document.getElementById('newCampaignStart')?.value;
+
+  if (!clientId || !name) { toast('Please fill in all required fields', 'warning'); return; }
+  try {
+    await API.post('/campaigns', { client_id: clientId, name, campaign_type: type, monthly_investment: parseFloat(investment) || 0, start_date: startDate });
+    closeModal('new_campaign_modal');
+    state.campaigns = [];
+    toast('Campaign created!');
+    navigate('campaigns');
+  } catch (e) { toast('Failed to create campaign', 'error'); }
+}
+
+// Proposal actions
 async function generateProposal() {
   const clientId = document.getElementById('pClientId')?.value;
-  if (!clientId) { toast('Please select a client', 'error'); return; }
+  if (!clientId) { toast('Please select a client first', 'warning'); return; }
   const btn = event.target;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
   btn.disabled = true;
@@ -1580,43 +2387,69 @@ async function generateProposal() {
       client_id: clientId,
       proposal_type: document.getElementById('pType')?.value,
       monthly_investment: document.getElementById('pInvestment')?.value,
+      contract_length: document.getElementById('pContractLength')?.value,
+      setup_fee: document.getElementById('pSetupFee')?.value || 0,
       target_keywords: document.getElementById('pKeywords')?.value,
       competitor_domains: document.getElementById('pCompetitors')?.value,
       goals: document.getElementById('pGoals')?.value,
     });
-    const p = res.data;
-    document.getElementById('pTitle').value = p.title;
-    document.getElementById('pScope').value = p.scope_summary;
-    document.getElementById('pDeliverables').value = p.deliverables;
-    document.getElementById('pGoalsFinal').value = p.goals;
-    document.getElementById('pContractLength').value = p.contract_length;
+    const d = res.data;
+    state._generatedProposal = d;
+    document.getElementById('pTitle').value = d.title;
+    document.getElementById('pInvestmentFinal').value = d.monthly_investment;
+    document.getElementById('pContractFinal').value = d.contract_length;
+    document.getElementById('pScope').value = d.scope_summary;
+    document.getElementById('pDeliverables').value = d.deliverables;
+    document.getElementById('pGoalsFinal').value = d.goals;
+    document.getElementById('pBaseline').value = d.baseline_data;
+
+    // Render line items
+    const li = d.line_items || [];
+    document.getElementById('lineItemsList').innerHTML = li.map((item, i) => `
+      <div class="flex items-center gap-2 p-2 bg-gray-50 rounded-lg text-sm">
+        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">${item.category}</span>
+        <span class="flex-1">${item.item_name}</span>
+        ${item.description ? `<span class="text-xs text-gray-400 truncate max-w-xs hidden md:block">${item.description}</span>` : ''}
+      </div>
+    `).join('');
+
     document.getElementById('proposalPreview').classList.remove('hidden');
-    toast('Proposal content generated!');
-  } catch (e) { toast('Generation failed', 'error'); }
+    document.getElementById('proposalPreview').scrollIntoView({ behavior: 'smooth' });
+    toast('Proposal generated!');
+  } catch (e) { toast('Failed to generate proposal', 'error'); }
   finally { btn.innerHTML = '<i class="fas fa-magic mr-2"></i>Auto-Generate Proposal Content'; btn.disabled = false; }
 }
 
 async function saveProposal(action) {
   const clientId = document.getElementById('pClientId')?.value;
-  if (!clientId) { toast('Please select a client', 'error'); return; }
+  if (!clientId) { toast('Please select a client', 'warning'); return; }
+
+  const data = {
+    client_id: clientId,
+    title: document.getElementById('pTitle')?.value,
+    proposal_type: document.getElementById('pType')?.value,
+    monthly_investment: parseFloat(document.getElementById('pInvestmentFinal')?.value || document.getElementById('pInvestment')?.value),
+    contract_length: parseInt(document.getElementById('pContractFinal')?.value || document.getElementById('pContractLength')?.value),
+    setup_fee: parseFloat(document.getElementById('pSetupFee')?.value) || 0,
+    account_manager: document.getElementById('pAccountManager')?.value || '',
+    scope_summary: document.getElementById('pScope')?.value,
+    deliverables: document.getElementById('pDeliverables')?.value,
+    target_keywords: document.getElementById('pKeywords')?.value,
+    competitor_domains: document.getElementById('pCompetitors')?.value,
+    goals: document.getElementById('pGoalsFinal')?.value,
+    baseline_data: document.getElementById('pBaseline')?.value,
+    line_items: state._generatedProposal?.line_items || [],
+  };
+
   try {
-    const res = await API.post('/proposals', {
-      client_id: clientId,
-      title: document.getElementById('pTitle')?.value,
-      proposal_type: document.getElementById('pType')?.value,
-      monthly_investment: document.getElementById('pInvestment')?.value,
-      contract_length: document.getElementById('pContractLength')?.value,
-      scope_summary: document.getElementById('pScope')?.value,
-      deliverables: document.getElementById('pDeliverables')?.value,
-      target_keywords: document.getElementById('pKeywords')?.value,
-      competitor_domains: document.getElementById('pCompetitors')?.value,
-      goals: document.getElementById('pGoalsFinal')?.value,
-    });
+    const res = await API.post('/proposals', data);
+    const proposalId = res.data.id;
+
     if (action === 'send') {
-      await API.post(`/proposals/${res.data.id}/send`);
-      toast('Proposal saved and sent to client!');
+      await API.post('/proposals/' + proposalId + '/send');
+      toast('Proposal saved and sent!');
     } else {
-      toast('Proposal saved as draft');
+      toast('Proposal saved as draft!');
     }
     state.proposals = null;
     navigate('proposals');
@@ -1625,184 +2458,351 @@ async function saveProposal(action) {
 
 async function sendProposal(id) {
   try {
-    const res = await API.post(`/proposals/${id}/send`);
+    const res = await API.post('/proposals/' + id + '/send');
+    toast('Proposal sent to client!');
     const url = window.location.origin + res.data.approval_url;
-    toast('Proposal sent! Approval link: ' + url);
-    await loadProposals();
-    if (state.selectedClient?.id) await loadClientDetail(state.selectedClient.id);
-    render();
+    navigator.clipboard?.writeText(url);
+    toast('Approval link copied to clipboard!');
+    state.proposals = null;
+    if (state.page === 'client_detail') loadClientDetail(state.selectedClient?.id);
+    else navigate('proposals');
   } catch (e) { toast('Failed to send proposal', 'error'); }
 }
 
 function copyApprovalLink(token) {
-  const url = window.location.origin + `/proposals/approve/${token}`;
-  navigator.clipboard.writeText(url).then(() => toast('Approval link copied!'));
+  const url = window.location.origin + '/proposals/approve/' + token;
+  navigator.clipboard?.writeText(url).then(() => toast('Approval link copied!'));
 }
 
-async function saveNewCampaign() {
-  const clientId = document.getElementById('ncClient')?.value;
-  if (!clientId) { toast('Please select a client', 'error'); return; }
+async function activatePayment(proposalId) {
+  if (!confirm('Activate this campaign and create the first payment + billing schedule?')) return;
   try {
-    await API.post('/campaigns', {
-      client_id: clientId,
-      name: document.getElementById('ncName')?.value,
-      campaign_type: document.getElementById('ncType')?.value,
-      start_date: document.getElementById('ncStart')?.value,
-      monthly_investment: document.getElementById('ncInvestment')?.value,
-      goals: document.getElementById('ncGoals')?.value,
+    const res = await API.post('/payments/demo-activate/' + proposalId);
+    toast('Campaign activated! First payment recorded and 28-day billing schedule created.');
+    state.proposals = null;
+    state.billingData = null;
+    if (state.page === 'client_detail') loadClientDetail(state.selectedClient?.id);
+    else navigate('payments');
+  } catch (e) { toast('Activation failed', 'error'); }
+}
+
+async function processBilling() {
+  try {
+    const res = await API.post('/payments/process-billing');
+    toast(`Processed ${res.data.processed} billing cycle(s)!`);
+    state.billingData = null;
+    navigate('payments');
+  } catch (e) { toast('Billing processing failed', 'error'); }
+}
+
+async function recordManualPayment() {
+  const clientId = document.getElementById('manualPayClient')?.value;
+  const amount = parseFloat(document.getElementById('manualPayAmount')?.value);
+  const type = document.getElementById('manualPayType')?.value;
+  const desc = document.getElementById('manualPayDesc')?.value;
+  if (!clientId || !amount) { toast('Client and amount are required', 'warning'); return; }
+  try {
+    const res = await API.post('/payments/manual', { client_id: clientId, amount, payment_type: type, description: desc });
+    toast(`Payment recorded! Invoice: ${res.data.invoice_number}`);
+    state.billingData = null;
+    navigate('payments');
+  } catch (e) { toast('Failed to record payment', 'error'); }
+}
+
+// WordPress actions
+async function saveWpProject() {
+  const clientId = document.getElementById('wpClientId')?.value;
+  const name = document.getElementById('wpProjectName')?.value;
+  if (!clientId || !name) { toast('Client and project name are required', 'warning'); return; }
+  try {
+    await API.post('/wordpress', {
+      client_id: clientId, project_name: name,
+      project_type: document.getElementById('wpProjectType')?.value,
+      project_budget: parseFloat(document.getElementById('wpBudget')?.value) || 0,
+      theme_used: document.getElementById('wpTheme')?.value || '',
+      page_builder: document.getElementById('wpBuilder')?.value || 'elementor',
+      go_live_date: document.getElementById('wpGoLive')?.value || null,
+      include_default_blocks: document.getElementById('wpDefaultBlocks')?.checked || false,
     });
-    toast('Campaign created!');
-    closeModal('new_campaign_modal');
-    state.campaigns = null;
-    navigate('campaigns');
-  } catch (e) { toast('Failed to create campaign', 'error'); }
+    closeModal('new_wp_modal');
+    state.wpProjects = null;
+    toast('WordPress project created!');
+    navigate('wordpress');
+  } catch (e) { toast('Failed to create project', 'error'); }
 }
 
-async function saveNewKeywords() {
-  const campaignId = document.getElementById('nkCampaign')?.value;
-  const clientId = document.getElementById('nkClientId')?.value || document.querySelector('#nkCampaign option:checked')?.dataset?.client;
-  const rawKeywords = document.getElementById('nkKeywords')?.value || '';
-  const keywords = rawKeywords.split('\n').map(k => k.trim()).filter(Boolean);
-
-  if (!keywords.length) { toast('Enter at least one keyword', 'error'); return; }
-
+async function saveWpBlock(projectId) {
+  const name = document.getElementById('newBlockName')?.value;
+  if (!name) { toast('Block name is required', 'warning'); return; }
   try {
-    await API.post('/keywords/bulk', {
-      campaign_id: campaignId,
+    await API.post('/wordpress/' + projectId + '/blocks', {
+      block_type: document.getElementById('newBlockType')?.value,
+      block_name: name,
+      description: document.getElementById('newBlockDesc')?.value || '',
+      hours_estimated: parseFloat(document.getElementById('newBlockHours')?.value) || 0,
+      price: parseFloat(document.getElementById('newBlockPrice')?.value) || 0,
+    });
+    closeModal('new_wp_block_modal');
+    loadWpProjectDetail(projectId);
+    toast('Block added!');
+  } catch (e) { toast('Failed to add block', 'error'); }
+}
+
+async function updateBlockStatus(blockId, newStatus) {
+  const wp = state.selectedWpProject;
+  if (!wp) return;
+  try {
+    const block = (wp.blocks || []).find(b => b.id === blockId);
+    if (!block) return;
+    await API.put('/wordpress/' + wp.id + '/blocks/' + blockId, { ...block, status: newStatus });
+    loadWpProjectDetail(wp.id);
+  } catch (e) { toast('Failed to update block', 'error'); }
+}
+
+function prefillBlockName(type) {
+  const names = {
+    homepage: 'Homepage', about_page: 'About Page', service_page: 'Service Page',
+    contact_page: 'Contact Page', blog_setup: 'Blog Setup', landing_page: 'Landing Page',
+    calculator_tool: 'Interactive Calculator', lead_form: 'Lead Capture Form',
+    booking_system: 'Booking System', woocommerce_setup: 'WooCommerce Setup',
+    seo_setup: 'SEO Foundation Setup', speed_optimisation: 'Speed Optimisation',
+    security_hardening: 'Security Hardening', backup_setup: 'Backup Setup',
+    google_analytics: 'Google Analytics 4 + GSC', schema_markup: 'Advanced Schema Markup',
+  };
+  const nameEl = document.getElementById('newBlockName');
+  if (nameEl && names[type]) nameEl.value = names[type];
+}
+
+// Social media actions
+async function saveSocialPost() {
+  const clientId = document.getElementById('socialClientId')?.value;
+  const platforms = [...document.querySelectorAll('input[name="socialPlatform"]:checked')].map(el => el.value);
+  if (!clientId || platforms.length === 0) { toast('Select client and at least one platform', 'warning'); return; }
+  try {
+    await API.post('/social', {
+      client_id: clientId, platform: platforms.length === 1 ? platforms[0] : platforms,
+      post_type: document.getElementById('socialPostType')?.value,
+      caption: document.getElementById('socialCaption')?.value,
+      hashtags: document.getElementById('socialHashtags')?.value,
+      scheduled_at: document.getElementById('socialScheduled')?.value || null,
+      link_url: document.getElementById('socialLinkUrl')?.value,
+    });
+    closeModal('new_social_modal');
+    state.socialPosts = null;
+    toast(`Social post(s) created on ${platforms.length} platform(s)!`);
+    navigate('social');
+  } catch (e) { toast('Failed to create post', 'error'); }
+}
+
+function filterSocial(platform) {
+  state.socialFilter = platform;
+  state.socialPosts = null;
+  navigate('social');
+}
+
+// Press release actions
+async function generatePressRelease() {
+  const clientId = document.getElementById('prClientId')?.value;
+  if (!clientId) { toast('Select a client first', 'warning'); return; }
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+  btn.disabled = true;
+  try {
+    const res = await API.post('/press-releases/generate', {
       client_id: clientId,
-      keywords: keywords.map(kw => ({
+      topic: document.getElementById('prTopic')?.value,
+      key_message: document.getElementById('prKeyMessage')?.value,
+      quote_person: document.getElementById('prQuotePerson')?.value,
+    });
+    const d = res.data;
+    state._generatedPR = { ...d, client_id: clientId, distribution_date: document.getElementById('prDistDate')?.value || null };
+    document.getElementById('prHeadline').value = d.headline;
+    document.getElementById('prSubheadline').value = d.subheadline;
+    document.getElementById('prBody').value = d.body_text;
+    document.getElementById('prQuote').value = d.quote;
+    document.getElementById('prQuoteAttrib').value = d.quote_attribution;
+    document.getElementById('prBoilerplate').value = d.boilerplate;
+    document.getElementById('prContact').value = d.contact_info;
+    document.getElementById('prPublications').value = d.target_publications;
+    document.getElementById('prSeoKeywords').value = d.seo_keywords;
+    document.getElementById('prPreview').classList.remove('hidden');
+    document.getElementById('prPreview').scrollIntoView({ behavior: 'smooth' });
+    toast('Press release template generated!');
+  } catch (e) { toast('Failed to generate', 'error'); }
+  finally { btn.innerHTML = '<i class="fas fa-magic mr-2"></i>Generate Press Release Template'; btn.disabled = false; }
+}
+
+async function savePressRelease(status) {
+  const clientId = document.getElementById('prClientId')?.value || state._generatedPR?.client_id;
+  const headline = document.getElementById('prHeadline')?.value;
+  if (!clientId || !headline) { toast('Client and headline are required', 'warning'); return; }
+  try {
+    await API.post('/press-releases', {
+      client_id: clientId, headline, status,
+      subheadline: document.getElementById('prSubheadline')?.value,
+      body_text: document.getElementById('prBody')?.value,
+      quote: document.getElementById('prQuote')?.value,
+      quote_attribution: document.getElementById('prQuoteAttrib')?.value,
+      boilerplate: document.getElementById('prBoilerplate')?.value,
+      contact_info: document.getElementById('prContact')?.value,
+      target_publications: document.getElementById('prPublications')?.value,
+      seo_keywords: document.getElementById('prSeoKeywords')?.value,
+      distribution_date: state._generatedPR?.distribution_date || null,
+    });
+    state.pressReleases = null;
+    state._generatedPR = null;
+    toast('Press release saved!');
+    navigate('press');
+  } catch (e) { toast('Failed to save press release', 'error'); }
+}
+
+// Keywords & LLM tracking
+async function saveKeywords() {
+  const campaignEl = document.getElementById('newKwCampaign');
+  const campaignId = campaignEl?.value;
+  const clientId = campaignEl?.options[campaignEl.selectedIndex]?.dataset?.client;
+  const rawKws = document.getElementById('newKwList')?.value;
+  if (!campaignId || !rawKws) { toast('Campaign and keywords are required', 'warning'); return; }
+
+  const keywords = rawKws.split('\n').map(k => k.trim()).filter(Boolean);
+  let saved = 0;
+  for (const kw of keywords) {
+    try {
+      await API.post('/keywords', {
+        campaign_id: campaignId, client_id: clientId,
         keyword: kw,
-        location_code: parseInt(document.getElementById('nkLocation')?.value || '2840'),
-        keyword_group: document.getElementById('nkGroup')?.value,
-        priority: document.getElementById('nkPriority')?.value,
-      }))
-    });
-    toast(`${keywords.length} keywords added!`);
-    closeModal('new_keyword_modal');
-    state.keywords = null;
-    if (state.page === 'campaign_detail') loadCampaignDetail(campaignId);
-    else loadKeywords();
-  } catch (e) { toast('Failed to add keywords', 'error'); }
+        location_code: parseInt(document.getElementById('newKwLocation')?.value) || 2036,
+        priority: document.getElementById('newKwPriority')?.value || 'medium',
+        target_url: document.getElementById('newKwUrl')?.value || '',
+        keyword_group: document.getElementById('newKwGroup')?.value || '',
+      });
+      saved++;
+    } catch (e) {}
+  }
+  closeModal('new_keyword_modal');
+  state.keywordData = null;
+  toast(`${saved} keyword(s) added!`);
+  navigate('keywords');
 }
 
-async function saveNewLLMPrompt() {
-  const campaignId = document.getElementById('nlCampaign')?.value;
-  const clientId = document.querySelector('#nlCampaign option:checked')?.dataset?.client;
+async function saveLlmPrompt() {
+  const campaignEl = document.getElementById('newLlmCampaign');
+  const campaignId = campaignEl?.value;
+  const clientId = campaignEl?.options[campaignEl.selectedIndex]?.dataset?.client;
+  const prompt = document.getElementById('newLlmPrompt')?.value;
+  if (!campaignId || !prompt) { toast('Campaign and prompt are required', 'warning'); return; }
   try {
     await API.post('/llm/prompts', {
-      campaign_id: campaignId,
-      client_id: clientId,
-      prompt_text: document.getElementById('nlPrompt')?.value,
-      target_brand: document.getElementById('nlBrand')?.value,
-      llm_model: document.getElementById('nlModel')?.value,
+      campaign_id: campaignId, client_id: clientId,
+      prompt_text: prompt,
+      target_brand: document.getElementById('newLlmBrand')?.value,
+      llm_model: document.getElementById('newLlmModel')?.value,
+      prompt_category: document.getElementById('newLlmCategory')?.value,
     });
-    toast('LLM prompt added!');
     closeModal('new_llm_modal');
     state.llmData = null;
-    loadLLM();
+    toast('LLM prompt added!');
+    navigate('llm');
   } catch (e) { toast('Failed to add prompt', 'error'); }
 }
 
 async function saveNewContent() {
+  const clientId = document.getElementById('ncoClient')?.value;
   const campaignId = document.getElementById('ncoCampaign')?.value;
-  const clientId = document.querySelector('#ncoCampaign option:checked')?.dataset?.client;
+  const title = document.getElementById('ncoTitle')?.value;
+  if (!clientId || !campaignId || !title) { toast('Please fill all required fields', 'warning'); return; }
   try {
     await API.post('/content', {
-      campaign_id: campaignId,
-      client_id: clientId,
-      title: document.getElementById('ncoTitle')?.value,
-      content_type: document.getElementById('ncoType')?.value,
+      client_id: clientId, campaign_id: campaignId,
+      title, content_type: document.getElementById('ncoType')?.value,
       target_keyword: document.getElementById('ncoKeyword')?.value,
-      word_count_target: document.getElementById('ncoWords')?.value,
+      word_count_target: parseInt(document.getElementById('ncoWords')?.value) || 1500,
       due_date: document.getElementById('ncoDue')?.value || null,
+      assigned_to: document.getElementById('ncoAssigned')?.value,
+      target_url: document.getElementById('ncoUrl')?.value,
     });
-    toast('Content item added!');
     closeModal('new_content_modal');
     state.contentItems = null;
-    loadContent();
+    toast('Content item added!');
+    navigate('content');
   } catch (e) { toast('Failed to add content', 'error'); }
 }
 
+async function loadCampaignsForContent(clientId) {
+  const sel = document.getElementById('ncoCampaign');
+  if (!clientId || !sel) return;
+  const filtered = (state.campaigns || []).filter(ca => ca.client_id == clientId);
+  sel.innerHTML = '<option value="">Select campaign...</option>' + filtered.map(ca => `<option value="${ca.id}">${ca.name}</option>`).join('');
+}
+
 async function trackRankings(campaignId) {
-  const btn = event?.target;
-  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Tracking...'; btn.disabled = true; }
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Tracking...';
+  btn.disabled = true;
   try {
-    const res = await API.post(`/rank-tracking/track/${campaignId}`);
-    const data = res.data;
-    toast(`Tracked ${data.tracked} keywords! ${data.mode === 'demo' ? '(Demo data)' : ''}`);
-    if (state.selectedCampaign?.id == campaignId) loadCampaignDetail(campaignId);
-    if (state.page === 'keywords') { state.keywords = null; loadKeywords(); }
-  } catch (e) { toast('Tracking failed', 'error'); }
-  finally { if (btn) { btn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>Track Rankings Now'; btn.disabled = false; } }
+    const res = await API.post('/rank-tracking/track-campaign', { campaign_id: campaignId });
+    toast(`Tracked ${res.data.tracked || 0} keywords!`);
+    loadCampaignDetail(campaignId);
+  } catch (e) { toast('Rank tracking failed', 'error'); }
+  finally { btn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>Track Rankings Now'; btn.disabled = false; }
+}
+
+async function trackAllRankings() {
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Tracking all...';
+  btn.disabled = true;
+  try {
+    const campaigns = state.campaigns || [];
+    let total = 0;
+    for (const ca of campaigns.filter(c => c.status === 'active')) {
+      const res = await API.post('/rank-tracking/track-campaign', { campaign_id: ca.id });
+      total += res.data.tracked || 0;
+    }
+    toast(`Tracked ${total} keywords across all campaigns!`);
+    state.keywordData = null;
+    navigate('keywords');
+  } catch (e) { toast('Failed to track all rankings', 'error'); }
+  finally { btn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>Track All Keywords'; btn.disabled = false; }
 }
 
 async function trackLLM(campaignId) {
-  const btn = event?.target;
-  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Checking...'; btn.disabled = true; }
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Checking...';
+  btn.disabled = true;
   try {
-    const res = await API.post(`/llm/track/${campaignId}`);
-    toast(`Checked ${res.data.tracked} LLM prompts! ${res.data.mode === 'demo' ? '(Demo)' : ''}`);
-    state.llmData = null;
-    if (state.page === 'campaign_detail') loadCampaignDetail(campaignId);
-    else loadLLM();
-  } catch (e) { toast('LLM check failed', 'error'); }
-  finally { if (btn) { btn.innerHTML = '<i class="fas fa-robot mr-2"></i>Check LLM Mentions'; btn.disabled = false; } }
-}
-
-async function trackAllLLM() {
-  try {
-    const campaigns = state.campaigns || (await API.get('/campaigns')).data;
-    for (const ca of campaigns.filter(c => c.status === 'active')) {
-      await API.post(`/llm/track/${ca.id}`);
-    }
-    toast('LLM tracking complete for all campaigns!');
-    state.llmData = null;
-    loadLLM();
+    const res = await API.post('/llm/track-campaign', { campaign_id: campaignId });
+    toast(`Checked ${res.data.tracked || 0} LLM prompt(s)!`);
+    loadCampaignDetail(campaignId);
   } catch (e) { toast('LLM tracking failed', 'error'); }
+  finally { btn.innerHTML = '<i class="fas fa-robot mr-2"></i>Check LLM Mentions'; btn.disabled = false; }
 }
 
 async function generateReport(campaignId) {
-  const period = new Date().toLocaleString('en', {month:'long',year:'numeric'});
-  const btn = event?.target;
-  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...'; btn.disabled = true; }
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+  btn.disabled = true;
   try {
-    const res = await API.post('/reports/generate', { campaign_id: campaignId, report_period: period });
+    const res = await API.post('/reports', { campaign_id: campaignId });
+    const viewUrl = '/reports/view/' + res.data.report_token;
+    window.open(viewUrl, '_blank');
     toast('Report generated!');
-    window.open('/reports/view/' + res.data.report_token, '_blank');
-    if (state.page === 'reports') { state.reports = null; loadReports(); }
-  } catch (e) { toast('Report generation failed', 'error'); }
-  finally { if (btn) { btn.innerHTML = '<i class="fas fa-chart-line mr-2"></i>Generate Report'; btn.disabled = false; } }
-}
-
-async function doGenerateReport() {
-  const campaignId = document.getElementById('grCampaign')?.value;
-  const period = document.getElementById('grPeriod')?.value;
-  try {
-    const res = await API.post('/reports/generate', {
-      campaign_id: campaignId,
-      report_period: period,
-      report_type: document.getElementById('grType')?.value,
-    });
-    toast('Report generated!');
-    closeModal('generate_report_modal');
-    window.open('/reports/view/' + res.data.report_token, '_blank');
     state.reports = null;
-    loadReports();
-  } catch (e) { toast('Failed to generate report', 'error'); }
+  } catch (e) { toast('Report generation failed', 'error'); }
+  finally { btn.innerHTML = '<i class="fas fa-chart-line mr-2"></i>Generate Report'; btn.disabled = false; }
 }
 
 async function sendReport(id) {
   try {
-    const res = await API.post(`/reports/${id}/send`);
-    toast(`Report sent! View link: ${window.location.origin}${res.data.view_url}`);
+    const res = await API.post('/reports/' + id + '/send');
+    toast('Report sent!');
     state.reports = null;
-    loadReports();
+    navigate('reports');
   } catch (e) { toast('Failed to send report', 'error'); }
 }
 
 async function updateContentStatus(id, status) {
   try {
-    await API.put(`/content/${id}`, { status });
+    await API.put('/content/' + id, { status });
     const item = state.contentItems?.find(i => i.id === id);
     if (item) item.status = status;
     toast('Status updated');
@@ -1810,6 +2810,7 @@ async function updateContentStatus(id, status) {
 }
 
 async function openBriefModal(ci) {
+  if (typeof ci === 'string') ci = JSON.parse(ci.replace(/&quot;/g, '"'));
   document.getElementById('briefModalTitle').textContent = ci.title;
   if (ci.brief) {
     document.getElementById('briefContent').textContent = ci.brief;
@@ -1826,8 +2827,7 @@ async function openBriefModal(ci) {
       word_count: ci.word_count_target,
     });
     document.getElementById('briefContent').textContent = res.data.brief;
-    // Save brief to item
-    await API.put(`/content/${ci.id}`, { ...ci, brief: res.data.brief });
+    await API.put('/content/' + ci.id, { ...ci, brief: res.data.brief });
   } catch (e) { document.getElementById('briefContent').textContent = 'Failed to generate brief.'; }
 }
 
@@ -1837,10 +2837,8 @@ async function autoGenerateBrief() {
   if (!keyword) { toast('Enter a target keyword first', 'warning'); return; }
   try {
     const res = await API.post('/content/generate-brief', { keyword, content_type: type, word_count: document.getElementById('ncoWords')?.value });
-    if (!document.getElementById('ncoTitle').value) {
-      document.getElementById('ncoTitle').value = res.data.title;
-    }
-    toast('Brief generated! Save to view it.');
+    if (!document.getElementById('ncoTitle').value) document.getElementById('ncoTitle').value = res.data.title;
+    toast('Brief generated!');
   } catch (e) { toast('Failed to generate brief', 'error'); }
 }
 
@@ -1858,13 +2856,12 @@ async function runKeywordResearch() {
   btn.disabled = true;
   try {
     const res = await API.post('/dataforseo/keyword-research', {
-      keyword,
-      location_code: parseInt(document.getElementById('kwResearchLocation')?.value || '2840'),
+      keyword, location_code: parseInt(document.getElementById('kwResearchLocation')?.value || '2036'),
     });
     const resultsDiv = document.getElementById('kwResearchResults');
     resultsDiv.classList.remove('hidden');
     resultsDiv.innerHTML = res.data.suggestions.map(s => `
-      <div class="flex items-center justify-between p-2 text-xs border-b border-gray-50">
+      <div class="flex items-center justify-between p-2 text-xs border-b border-gray-50 last:border-0">
         <span class="font-medium text-gray-800">${s.keyword}</span>
         <div class="flex gap-3 text-gray-500">
           <span><i class="fas fa-chart-bar mr-1"></i>${s.search_volume?.toLocaleString() || '-'}</span>
@@ -1875,7 +2872,7 @@ async function runKeywordResearch() {
     `).join('');
     toast(`Found ${res.data.suggestions.length} keywords`);
   } catch (e) { toast('Research failed', 'error'); }
-  finally { btn.innerHTML = '<i class="fas fa-search mr-2"></i>Research Keywords'; btn.disabled = false; }
+  finally { btn.innerHTML = '<i class="fas fa-search mr-2"></i>Research'; btn.disabled = false; }
 }
 
 async function runSerpAnalysis() {
@@ -1885,13 +2882,13 @@ async function runSerpAnalysis() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Analyzing...';
   btn.disabled = true;
   try {
-    const res = await API.get(`/rank-tracking/serp-analysis?keyword=${encodeURIComponent(keyword)}&location_code=${document.getElementById('serpLocation')?.value || '2840'}`);
+    const res = await API.get(`/rank-tracking/serp-analysis?keyword=${encodeURIComponent(keyword)}&location_code=${document.getElementById('serpLocation')?.value || '2036'}`);
     const resultsDiv = document.getElementById('serpResults');
     resultsDiv.classList.remove('hidden');
     resultsDiv.innerHTML = `
       ${res.data.serp_features?.length ? `<p class="text-xs text-gray-500 mb-2">SERP Features: ${res.data.serp_features.join(', ')}</p>` : ''}
-      ${res.data.organic_results?.map(r => `
-        <div class="p-2 text-xs border-b border-gray-50">
+      ${(res.data.organic_results||[]).map(r => `
+        <div class="p-2 text-xs border-b border-gray-50 last:border-0">
           <div class="flex items-center gap-2">
             <span class="w-5 h-5 rounded bg-gray-100 text-gray-600 flex items-center justify-center font-bold flex-shrink-0">${r.position}</span>
             <div class="flex-1 min-w-0">
@@ -1900,11 +2897,11 @@ async function runSerpAnalysis() {
             </div>
           </div>
         </div>
-      `).join('') || ''}
+      `).join('')}
     `;
     toast('SERP analyzed!');
   } catch (e) { toast('SERP analysis failed', 'error'); }
-  finally { btn.innerHTML = '<i class="fas fa-chart-bar mr-2"></i>Analyze SERP'; btn.disabled = false; }
+  finally { btn.innerHTML = '<i class="fas fa-chart-bar mr-2"></i>Analyze'; btn.disabled = false; }
 }
 
 async function runCompetitorAnalysis() {
@@ -1919,26 +2916,12 @@ async function runCompetitorAnalysis() {
     document.getElementById('compResults').innerHTML = `
       <div class="space-y-2 text-sm">
         <div class="grid grid-cols-3 gap-2">
-          <div class="p-2 bg-blue-50 rounded-lg text-center">
-            <div class="font-bold text-blue-700">${d.rank_overview?.organic_traffic?.toLocaleString() || '-'}</div>
-            <div class="text-xs text-gray-500">Est. Traffic</div>
-          </div>
-          <div class="p-2 bg-green-50 rounded-lg text-center">
-            <div class="font-bold text-green-700">${d.rank_overview?.organic_keywords?.toLocaleString() || '-'}</div>
-            <div class="text-xs text-gray-500">Keywords</div>
-          </div>
-          <div class="p-2 bg-purple-50 rounded-lg text-center">
-            <div class="font-bold text-purple-700">${d.rank_overview?.domain_rank || '-'}</div>
-            <div class="text-xs text-gray-500">Domain Rank</div>
-          </div>
+          <div class="p-2 bg-blue-50 rounded-lg text-center"><div class="font-bold text-blue-700">${d.rank_overview?.organic_traffic?.toLocaleString() || '-'}</div><div class="text-xs text-gray-500">Est. Traffic</div></div>
+          <div class="p-2 bg-green-50 rounded-lg text-center"><div class="font-bold text-green-700">${d.rank_overview?.organic_keywords?.toLocaleString() || '-'}</div><div class="text-xs text-gray-500">Keywords</div></div>
+          <div class="p-2 bg-purple-50 rounded-lg text-center"><div class="font-bold text-purple-700">${d.rank_overview?.domain_rank || '-'}</div><div class="text-xs text-gray-500">Domain Rank</div></div>
         </div>
         <p class="font-medium text-xs text-gray-600 mt-2">Top Competitors:</p>
-        ${d.competitors?.slice(0,5).map(c => `
-          <div class="flex justify-between text-xs p-1 border-b border-gray-50">
-            <span class="font-medium">${c.domain}</span>
-            <span class="text-gray-500">${c.organic_traffic?.toLocaleString() || '-'} visits</span>
-          </div>
-        `).join('')}
+        ${(d.competitors||[]).slice(0,5).map(c => `<div class="flex justify-between text-xs p-1 border-b border-gray-50"><span class="font-medium">${c.domain}</span><span class="text-gray-500">${c.organic_traffic?.toLocaleString() || '-'} visits</span></div>`).join('')}
       </div>
     `;
     document.getElementById('compResults').classList.remove('hidden');
@@ -1958,22 +2941,10 @@ async function runBacklinkCheck() {
     const d = res.data;
     document.getElementById('backlinkResults').innerHTML = `
       <div class="grid grid-cols-2 gap-2 text-sm">
-        <div class="p-3 bg-blue-50 rounded-xl text-center">
-          <div class="text-xl font-bold text-blue-700">${d.backlinks_count?.toLocaleString() || '-'}</div>
-          <div class="text-xs text-gray-500">Backlinks</div>
-        </div>
-        <div class="p-3 bg-green-50 rounded-xl text-center">
-          <div class="text-xl font-bold text-green-700">${d.referring_domains?.toLocaleString() || '-'}</div>
-          <div class="text-xs text-gray-500">Ref. Domains</div>
-        </div>
-        <div class="p-3 bg-purple-50 rounded-xl text-center">
-          <div class="text-xl font-bold text-purple-700">${d.domain_rank || '-'}</div>
-          <div class="text-xs text-gray-500">Domain Rank</div>
-        </div>
-        <div class="p-3 bg-yellow-50 rounded-xl text-center">
-          <div class="text-xl font-bold text-yellow-700">${d.spam_score || '0'}</div>
-          <div class="text-xs text-gray-500">Spam Score</div>
-        </div>
+        <div class="p-3 bg-blue-50 rounded-xl text-center"><div class="text-xl font-bold text-blue-700">${d.backlinks_count?.toLocaleString() || '-'}</div><div class="text-xs text-gray-500">Backlinks</div></div>
+        <div class="p-3 bg-green-50 rounded-xl text-center"><div class="text-xl font-bold text-green-700">${d.referring_domains?.toLocaleString() || '-'}</div><div class="text-xs text-gray-500">Ref. Domains</div></div>
+        <div class="p-3 bg-purple-50 rounded-xl text-center"><div class="text-xl font-bold text-purple-700">${d.domain_rank || '-'}</div><div class="text-xs text-gray-500">Domain Rank</div></div>
+        <div class="p-3 bg-yellow-50 rounded-xl text-center"><div class="text-xl font-bold text-yellow-700">${d.spam_score || '0'}</div><div class="text-xs text-gray-500">Spam Score</div></div>
       </div>
     `;
     document.getElementById('backlinkResults').classList.remove('hidden');
@@ -1987,7 +2958,7 @@ function filterClients(search) {
   const q = (search || document.getElementById('clientSearch')?.value || '').toLowerCase();
   const status = document.getElementById('clientStatusFilter')?.value || '';
   const filtered = state.clients.filter(cl => {
-    const matchSearch = !q || cl.company_name.toLowerCase().includes(q) || cl.website.toLowerCase().includes(q) || cl.contact_email.toLowerCase().includes(q);
+    const matchSearch = !q || cl.company_name.toLowerCase().includes(q) || cl.website.toLowerCase().includes(q) || (cl.contact_email||'').toLowerCase().includes(q);
     const matchStatus = !status || cl.status === status;
     return matchSearch && matchStatus;
   });
@@ -1997,92 +2968,373 @@ function filterClients(search) {
 
 function filterKeywords() {
   const campaign = document.getElementById('kwCampaignFilter')?.value;
-  const group = document.getElementById('kwGroupFilter')?.value;
-  const priority = document.getElementById('kwPriorityFilter')?.value;
-  const filtered = (state.keywords || []).filter(k => {
-    return (!campaign || k.campaign_id == campaign) && (!group || k.keyword_group === group) && (!priority || k.priority === priority);
-  });
-  const tableEl = document.getElementById('kwTable');
-  if (tableEl) tableEl.innerHTML = renderKeywordRows(filtered);
+  if (!campaign) { state.keywordData = null; loadKeywords(); return; }
+  API.get('/keywords?campaign_id=' + campaign).then(r => { state.keywordData = r.data; render(); });
 }
 
 function filterContent() {
   const status = document.getElementById('contentStatusFilter')?.value;
   const type = document.getElementById('contentTypeFilter')?.value;
-  const filtered = (state.contentItems || []).filter(ci => {
-    return (!status || ci.status === status) && (!type || ci.content_type === type);
-  });
-  const tableEl = document.getElementById('contentTable');
-  if (tableEl) tableEl.innerHTML = renderContentRows(filtered);
+  let url = '/content?';
+  if (status) url += 'status=' + status + '&';
+  if (type) url += 'content_type=' + type;
+  API.get(url).then(r => { state.contentItems = r.data; render(); });
 }
 
-// Modal helpers
-function openModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove('hidden');
+function filterProposals() {
+  const status = document.getElementById('proposalStatusFilter')?.value;
+  const url = status ? '/proposals?status=' + status : '/proposals';
+  API.get(url).then(r => { state.proposals = r.data; render(); });
 }
 
-function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add('hidden');
+// Event attachment (for keyboard shortcuts, etc.)
+function attachEvents() {
+  // ESC closes modals
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m => m.classList.add('hidden'));
+    }
+  }, { once: true });
 }
 
-function openEditClientModal() {
-  toast('Edit client form coming soon', 'warning');
-}
-
-function updateNkClient(val) {
-  const opt = document.querySelector(`#nkCampaign option[value="${val}"]`);
-  if (opt) document.getElementById('nkClientId').value = opt.dataset.client;
-}
-
-function updateNlClient(val) {
-  const opt = document.querySelector(`#nlCampaign option[value="${val}"]`);
-  if (opt) document.getElementById('nlClientId').value = opt.dataset.client;
-}
-
-function updateNcoClient(val) {
-  const opt = document.querySelector(`#ncoCampaign option[value="${val}"]`);
-  if (opt) document.getElementById('ncoClientId').value = opt.dataset.client;
-}
-
-function prefillProposalClient(clientId) {
-  const client = state.clients?.find(c => c.id == clientId);
-  if (client && client.website) {
-    document.getElementById('pKeywords').value = '';
-  }
-}
-
-function loading() {
+// ==============================
+// ONBOARDING
+// ==============================
+function renderOnboarding() {
+  if (!state.onboardingList) { loadOnboarding(); return loading(); }
+  const list = state.onboardingList;
+  const statusColors = {
+    not_sent: ['bg-gray-100 text-gray-500','Not Sent'],
+    pending: ['bg-yellow-100 text-yellow-700','Pending'],
+    sent: ['bg-blue-100 text-blue-600','Sent'],
+    in_progress: ['bg-purple-100 text-purple-600','In Progress'],
+    submitted: ['bg-orange-100 text-orange-600','Submitted'],
+    approved: ['bg-green-100 text-green-700','Approved'],
+  };
   return `
-    <div class="flex items-center justify-center py-20">
-      <div class="text-center text-gray-400">
-        <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
-        <p class="text-sm">Loading data...</p>
+    <div class="space-y-6">
+      <!-- Summary cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        ${['pending','sent','in_progress','submitted','approved'].map(s => {
+          const count = list.filter(o => o.status === s).length;
+          const [cls, lbl] = statusColors[s];
+          return `<div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+            <div class="text-2xl font-bold text-gray-800">${count}</div>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}">${lbl}</span>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Pending reminders alert -->
+      ${(() => {
+        const overdue = list.filter(o => o.status !== 'approved' && o.status !== 'archived' && o.next_reminder_at && new Date(o.next_reminder_at) < new Date());
+        return overdue.length ? `<div class="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
+          <i class="fas fa-bell text-orange-500 mt-0.5"></i>
+          <div><div class="font-semibold text-orange-700">${overdue.length} reminder${overdue.length>1?'s':''} due</div>
+          <div class="text-sm text-orange-600">${overdue.map(o=>o.company_name).join(', ')} – onboarding overdue</div></div>
+          <button onclick="processReminders()" class="ml-auto text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600"><i class="fas fa-paper-plane mr-1"></i>Send Now</button>
+        </div>` : '';
+      })()}
+
+      <!-- Table -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+          <h3 class="font-semibold text-gray-800">All Onboarding Forms</h3>
+          <button onclick="processReminders()" class="text-xs text-blue-600 hover:underline"><i class="fas fa-sync-alt mr-1"></i>Process Due Reminders</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+              <tr>
+                <th class="px-5 py-3 text-left">Client</th>
+                <th class="px-5 py-3 text-left">Status</th>
+                <th class="px-5 py-3 text-left">Reminders</th>
+                <th class="px-5 py-3 text-left">Last Sent</th>
+                <th class="px-5 py-3 text-left">Submitted</th>
+                <th class="px-5 py-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              ${list.length === 0 ? `<tr><td colspan="6" class="px-5 py-12 text-center text-gray-400">No onboarding records yet. Create one when a client approves a proposal.</td></tr>` : list.map(o => {
+                const [cls, lbl] = statusColors[o.status] || ['bg-gray-100 text-gray-500', o.status];
+                return `<tr class="hover:bg-blue-50/30 cursor-pointer" onclick="viewOnboarding(${o.id})">
+                  <td class="px-5 py-4">
+                    <div class="font-semibold text-gray-800">${o.company_name}</div>
+                    <div class="text-xs text-gray-400">${o.contact_email || ''}</div>
+                  </td>
+                  <td class="px-5 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}">${lbl}</span></td>
+                  <td class="px-5 py-4 text-gray-600">${o.reminders_sent || 0} sent</td>
+                  <td class="px-5 py-4 text-gray-500">${o.last_reminder_sent_at ? ago(o.last_reminder_sent_at) : '–'}</td>
+                  <td class="px-5 py-4">${o.submitted_at ? `<span class="text-green-600"><i class="fas fa-check mr-1"></i>${ago(o.submitted_at)}</span>` : '<span class="text-gray-400">–</span>'}</td>
+                  <td class="px-5 py-4">
+                    <div class="flex gap-2">
+                      <button onclick="event.stopPropagation(); sendOnboardingReminder(${o.id})" class="text-xs bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg hover:bg-blue-100" title="Send/Resend form link"><i class="fas fa-paper-plane"></i></button>
+                      ${o.status === 'submitted' ? `<button onclick="event.stopPropagation(); approveOnboarding(${o.id})" class="text-xs bg-green-50 text-green-600 px-2.5 py-1.5 rounded-lg hover:bg-green-100" title="Approve onboarding"><i class="fas fa-check"></i></button>` : ''}
+                      <button onclick="event.stopPropagation(); copyOnboardingLink(${o.id}, '${o.onboarding_token}')" class="text-xs bg-gray-50 text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-100" title="Copy form link"><i class="fas fa-copy"></i></button>
+                    </div>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Onboarding Modal -->
+    <div id="new_onboarding_modal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <h3 class="text-lg font-bold mb-4">Create Onboarding Form</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client <span class="text-red-500">*</span></label>
+            <select id="ob_client" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+              <option value="">— Select client —</option>
+              ${state.clients.map(c => `<option value="${c.id}">${c.company_name}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Reminder Channel</label>
+            <select id="ob_channel" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+              <option value="email">Email only</option>
+              <option value="sms">SMS only</option>
+              <option value="both">Email + SMS</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+          <button onclick="closeModal('new_onboarding_modal')" class="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">Cancel</button>
+          <button onclick="createOnboarding()" class="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700">Create & Send</button>
+        </div>
       </div>
     </div>
   `;
 }
 
-function attachEvents() {
-  // Close modals on overlay click
-  document.querySelectorAll('.modal-overlay').forEach(el => {
-    el.addEventListener('click', (e) => {
-      if (e.target === el) el.classList.add('hidden');
-    });
-  });
+function renderOnboardingDetail() {
+  const o = state.selectedOnboarding;
+  if (!o) return loading();
+
+  const comp = o.completion || {};
+  const secs = comp.sections || {};
+  const statusColors = { pending:'bg-yellow-100 text-yellow-700', sent:'bg-blue-100 text-blue-600', in_progress:'bg-purple-100 text-purple-600', submitted:'bg-orange-100 text-orange-600', approved:'bg-green-100 text-green-700' };
+  const [cls] = Object.entries(statusColors).find(([k]) => k === o.status) || ['bg-gray-100 text-gray-500'];
+
+  const sectionLabels = { brand:'Brand & Business', audience:'Target Audience', content:'Brand Voice & Content', seo:'SEO & Goals', social:'Social Media', website:'Website' };
+
+  return `
+    <div class="space-y-6">
+      <button onclick="navigate('onboarding')" class="text-sm text-blue-600 hover:underline"><i class="fas fa-arrow-left mr-1"></i>Back to Onboarding</button>
+
+      <!-- Header -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-gray-800">${o.company_name}</h2>
+            <p class="text-sm text-gray-500">${o.contact_email || ''} · ${o.contact_phone || ''}</p>
+          </div>
+          <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold ${cls}">${o.status}</span>
+        </div>
+
+        <!-- Overall completion bar -->
+        <div class="mt-6">
+          <div class="flex justify-between text-sm mb-2">
+            <span class="text-gray-600 font-medium">Overall Completion</span>
+            <span class="font-bold text-blue-600">${comp.overall || 0}%</span>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-3">
+            <div class="bg-blue-600 h-3 rounded-full transition-all" style="width:${comp.overall || 0}%"></div>
+          </div>
+        </div>
+
+        <!-- Section completion pills -->
+        <div class="mt-4 flex flex-wrap gap-3">
+          ${Object.entries(secs).map(([key, pct]) => `
+            <div class="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+              <div class="w-16 bg-gray-200 rounded-full h-1.5">
+                <div class="bg-blue-500 h-1.5 rounded-full" style="width:${pct}%"></div>
+              </div>
+              <span class="text-xs text-gray-600">${sectionLabels[key] || key} <strong>${pct}%</strong></span>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button onclick="sendOnboardingReminder(${o.id})" class="btn-secondary text-sm"><i class="fas fa-paper-plane mr-2"></i>Send/Resend Form</button>
+          <button onclick="copyOnboardingLink(${o.id}, '${o.onboarding_token}')" class="btn-secondary text-sm"><i class="fas fa-copy mr-2"></i>Copy Link</button>
+          ${o.status === 'submitted' ? `<button onclick="approveOnboarding(${o.id})" class="btn-primary text-sm"><i class="fas fa-check-circle mr-2"></i>Approve Onboarding</button>` : ''}
+        </div>
+      </div>
+
+      <!-- Form Data Sections -->
+      ${Object.entries(o.sections || {}).filter(([,v]) => v && Object.keys(v).length > 1).map(([key, data]) => `
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+            <i class="fas fa-circle-check text-green-500 text-sm"></i>
+            <h3 class="font-semibold text-gray-700">${sectionLabels[key] || key}</h3>
+            <span class="ml-auto text-xs text-gray-400">${secs[key] || 0}% complete</span>
+          </div>
+          <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+            ${Object.entries(data).filter(([k]) => !['id','onboarding_id','created_at','updated_at'].includes(k) && data[k]).map(([k, v]) => `
+              <div>
+                <div class="text-xs text-gray-400 uppercase tracking-wide">${k.replace(/_/g,' ')}</div>
+                <div class="text-sm text-gray-800 mt-1 break-words">${(() => {
+                  let s = String(v);
+                  if (s.startsWith('[') || s.startsWith('{')) try { const p = JSON.parse(s); return Array.isArray(p) ? p.map(x=>typeof x==='object'?JSON.stringify(x):x).join(', ') : JSON.stringify(p, null, 2); } catch {}
+                  return s === '1' ? '<i class="fas fa-check text-green-500"></i>' : s === '0' ? '<i class="fas fa-times text-gray-300"></i>' : s;
+                })()}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+
+      <!-- Reminder History -->
+      ${o.reminders?.length ? `
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-700">Reminder History</h3>
+          </div>
+          <div class="divide-y divide-gray-50">
+            ${o.reminders.map(r => `
+              <div class="px-6 py-3 flex items-center justify-between">
+                <div class="text-sm text-gray-600"><i class="fas fa-${r.channel === 'sms' ? 'mobile-alt' : 'envelope'} mr-2 text-blue-400"></i>${r.channel} reminder</div>
+                <span class="text-xs px-2 py-1 rounded-full ${r.status==='sent'?'bg-green-50 text-green-600':'bg-red-50 text-red-500'}">${r.status}</span>
+                <div class="text-xs text-gray-400">${r.sent_at ? ago(r.sent_at) : '–'}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+async function loadOnboarding() {
+  try {
+    const res = await API.get('/onboarding');
+    state.onboardingList = res.data;
+    render();
+  } catch(e) { console.error(e); }
+}
+
+async function viewOnboarding(id) {
+  try {
+    const res = await API.get(`/onboarding/${id}`);
+    state.selectedOnboarding = res.data;
+    navigate('onboarding_detail');
+  } catch(e) { toast('Failed to load onboarding record', 'error'); }
+}
+
+async function createOnboarding() {
+  const clientId = document.getElementById('ob_client').value;
+  const channel = document.getElementById('ob_channel').value;
+  if (!clientId) { toast('Please select a client', 'error'); return; }
+  try {
+    const res = await API.post('/onboarding', { client_id: parseInt(clientId), reminder_channel: channel });
+    closeModal('new_onboarding_modal');
+    toast('Onboarding record created');
+    // auto-send
+    await API.post(`/onboarding/${res.data.id}/send`);
+    toast('Onboarding form sent to client');
+    state.onboardingList = null;
+    navigate('onboarding');
+  } catch(e) { toast('Failed to create onboarding', 'error'); }
+}
+
+async function sendOnboardingReminder(id) {
+  const btn = event.target.closest('button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+  try {
+    const res = await API.post(`/onboarding/${id}/send`);
+    toast(`Onboarding form sent${res.data.email_sent ? ' via email' : ''}${res.data.sms_sent ? ' + SMS' : ''}`);
+    state.onboardingList = null;
+    if (state.page === 'onboarding') navigate('onboarding');
+    if (state.page === 'onboarding_detail') { const dr = await API.get(`/onboarding/${id}`); state.selectedOnboarding = dr.data; render(); }
+  } catch(e) { toast('Failed to send reminder', 'error'); } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i>'; }
+  }
+}
+
+async function approveOnboarding(id) {
+  if (!confirm('Mark this onboarding as approved? This will unblock all campaign tasks.')) return;
+  try {
+    await API.post(`/onboarding/${id}/approve`, { approved_by: 'Account Manager' });
+    toast('Onboarding approved – campaign tasks unblocked');
+    state.onboardingList = null;
+    if (state.selectedOnboarding) { const r = await API.get(`/onboarding/${id}`); state.selectedOnboarding = r.data; }
+    render();
+  } catch(e) { toast('Failed to approve', 'error'); }
+}
+
+function copyOnboardingLink(id, token) {
+  const url = `${window.location.origin}/onboarding/${token}`;
+  navigator.clipboard.writeText(url).then(() => toast('Onboarding link copied to clipboard'));
+}
+
+async function processReminders() {
+  try {
+    const res = await API.post('/onboarding/process-reminders');
+    toast(`${res.data.sent} reminder(s) sent out of ${res.data.processed} due`);
+    state.onboardingList = null;
+    navigate('onboarding');
+  } catch(e) { toast('Failed to process reminders', 'error'); }
+}
+
+async function createOnboardingForClient(clientId) {
+  try {
+    const res = await API.post('/onboarding', { client_id: clientId, reminder_channel: 'email' });
+    await API.post(`/onboarding/${res.data.id}/send`);
+    toast('Onboarding form created and sent to client');
+    // Refresh client detail
+    await loadClientDetail(clientId);
+  } catch(e) { toast('Failed to create onboarding', 'error'); }
+}
+
+async function resendOnboardingForClient(clientId) {
+  try {
+    // Find the onboarding record for this client
+    const res = await API.get(`/onboarding?client_id=${clientId}`);
+    const records = res.data;
+    const active = records.find(r => !['approved','archived'].includes(r.status));
+    if (!active) { toast('No active onboarding record found', 'error'); return; }
+    await API.post(`/onboarding/${active.id}/send`);
+    toast('Reminder sent to client');
+  } catch(e) { toast('Failed to send reminder', 'error'); }
+}
+
+async function reviewOnboardingForClient(clientId) {
+  try {
+    const res = await API.get(`/onboarding?client_id=${clientId}`);
+    const records = res.data;
+    const submitted = records.find(r => r.status === 'submitted');
+    if (submitted) {
+      state.selectedOnboarding = null;
+      const detail = await API.get(`/onboarding/${submitted.id}`);
+      state.selectedOnboarding = detail.data;
+      navigate('onboarding_detail');
+    }
+  } catch(e) { toast('Failed to load onboarding', 'error'); }
 }
 
 // ==============================
-// INIT
+// BOOTSTRAP
 // ==============================
 async function init() {
-  await Promise.all([
-    checkDataForSEOStatus(),
-    loadClients(),
-  ]);
+  if (!state.clients.length) {
+    try {
+      const [clientsRes, campaignsRes, dfsRes] = await Promise.all([
+        API.get('/clients'),
+        API.get('/campaigns'),
+        API.get('/dataforseo/status').catch(() => ({ data: { connected: false } }))
+      ]);
+      state.clients = clientsRes.data;
+      state.campaigns = campaignsRes.data;
+      state.dataforseoStatus = dfsRes.data;
+    } catch (e) { console.error('Init failed:', e); }
+  }
   loadDashboard();
-  navigate('dashboard');
 }
 
 init();

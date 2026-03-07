@@ -7,67 +7,145 @@ export const clientsRoutes = new Hono<{ Bindings: Bindings }>()
 clientsRoutes.get('/', async (c) => {
   const db = c.env.DB
   const clients = await db.prepare(`
-    SELECT c.*, 
+    SELECT c.*,
       COUNT(DISTINCT ca.id) as campaign_count,
-      COUNT(DISTINCT k.id) as keyword_count
+      COUNT(DISTINCT k.id) as keyword_count,
+      COUNT(DISTINCT p.id) as proposal_count,
+      (SELECT SUM(amount) FROM payments WHERE client_id = c.id AND status = 'succeeded') as total_paid
     FROM clients c
     LEFT JOIN campaigns ca ON ca.client_id = c.id AND ca.status = 'active'
     LEFT JOIN keywords k ON k.client_id = c.id
+    LEFT JOIN proposals p ON p.client_id = c.id
     GROUP BY c.id
-    ORDER BY c.created_at DESC
+    ORDER BY c.company_name ASC
   `).all()
   return c.json(clients.results)
 })
 
-// GET single client with campaigns
+// GET single client with all related data
 clientsRoutes.get('/:id', async (c) => {
   const id = c.req.param('id')
   const db = c.env.DB
   const client = await db.prepare('SELECT * FROM clients WHERE id = ?').bind(id).first()
   if (!client) return c.json({ error: 'Client not found' }, 404)
-  
-  const campaigns = await db.prepare('SELECT * FROM campaigns WHERE client_id = ? ORDER BY created_at DESC').bind(id).all()
-  const proposals = await db.prepare('SELECT * FROM proposals WHERE client_id = ? ORDER BY created_at DESC').bind(id).all()
-  const recentActivity = await db.prepare(
-    'SELECT * FROM activity_log WHERE client_id = ? ORDER BY created_at DESC LIMIT 10'
-  ).bind(id).all()
-  
-  return c.json({ ...client as any, campaigns: campaigns.results, proposals: proposals.results, activity: recentActivity.results })
+
+  const [campaigns, proposals, payments, activity, wpProjects, socialStats, keywords] = await Promise.all([
+    db.prepare('SELECT * FROM campaigns WHERE client_id = ? ORDER BY created_at DESC').bind(id).all(),
+    db.prepare('SELECT * FROM proposals WHERE client_id = ? ORDER BY created_at DESC').bind(id).all(),
+    db.prepare('SELECT * FROM payments WHERE client_id = ? ORDER BY created_at DESC LIMIT 10').bind(id).all(),
+    db.prepare('SELECT * FROM activity_log WHERE client_id = ? ORDER BY created_at DESC LIMIT 20').bind(id).all(),
+    db.prepare('SELECT * FROM wordpress_projects WHERE client_id = ? ORDER BY created_at DESC').bind(id).all(),
+    db.prepare(`
+      SELECT 
+        COUNT(*) as total_posts,
+        COUNT(CASE WHEN status='published' THEN 1 END) as published,
+        COUNT(CASE WHEN status='scheduled' THEN 1 END) as scheduled
+      FROM social_posts WHERE client_id = ?
+    `).bind(id).first(),
+    db.prepare('SELECT * FROM keywords WHERE client_id = ? ORDER BY created_at DESC').bind(id).all(),
+  ])
+
+  return c.json({
+    ...client as any,
+    campaigns: campaigns.results,
+    proposals: proposals.results,
+    payments: payments.results,
+    activity: activity.results,
+    wordpress_projects: wpProjects.results,
+    social_stats: socialStats,
+    keywords: keywords.results,
+  })
 })
 
 // POST create client
 clientsRoutes.post('/', async (c) => {
   const db = c.env.DB
   const body = await c.req.json()
-  const { company_name, contact_name, contact_email, contact_phone, website, industry, location, timezone, monthly_budget, notes } = body
 
-  if (!company_name || !contact_email || !website) {
+  if (!body.company_name || !body.contact_email || !body.website) {
     return c.json({ error: 'company_name, contact_email, and website are required' }, 400)
   }
 
   const result = await db.prepare(`
-    INSERT INTO clients (company_name, contact_name, contact_email, contact_phone, website, industry, location, timezone, monthly_budget, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(company_name, contact_name, contact_email, contact_phone || '', website, industry || '', location || '', timezone || 'UTC', monthly_budget || 0, notes || '').run()
+    INSERT INTO clients (
+      company_name, contact_name, contact_email, contact_phone, website,
+      industry, location, timezone, monthly_budget, notes, status,
+      abn, address, city, state, postcode, country, account_manager,
+      referral_source, contract_start, contract_end,
+      linkedin_url, facebook_url, instagram_handle,
+      google_business_id, ga4_property_id, gsc_property,
+      cms_platform, hosting_provider,
+      secondary_contact_name, secondary_contact_email
+    ) VALUES (
+      ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?,
+      ?, ?, ?,
+      ?, ?, ?,
+      ?, ?,
+      ?, ?
+    )
+  `).bind(
+    body.company_name, body.contact_name || '', body.contact_email,
+    body.contact_phone || '', body.website,
+    body.industry || '', body.location || '', body.timezone || 'Australia/Sydney',
+    body.monthly_budget || 0, body.notes || '', body.status || 'prospect',
+    body.abn || '', body.address || '', body.city || '',
+    body.state || '', body.postcode || '', body.country || 'Australia',
+    body.account_manager || '', body.referral_source || '',
+    body.contract_start || null, body.contract_end || null,
+    body.linkedin_url || '', body.facebook_url || '', body.instagram_handle || '',
+    body.google_business_id || '', body.ga4_property_id || '', body.gsc_property || '',
+    body.cms_platform || 'wordpress', body.hosting_provider || '',
+    body.secondary_contact_name || '', body.secondary_contact_email || ''
+  ).run()
 
   await db.prepare(
     "INSERT INTO activity_log (client_id, activity_type, description) VALUES (?, 'client_created', ?)"
-  ).bind(result.meta.last_row_id, `New client created: ${company_name}`).run()
+  ).bind(result.meta.last_row_id, `New client created: ${body.company_name}`).run()
 
   return c.json({ id: result.meta.last_row_id, message: 'Client created' }, 201)
 })
 
-// PUT update client
+// PUT update client - full update
 clientsRoutes.put('/:id', async (c) => {
   const id = c.req.param('id')
   const db = c.env.DB
   const body = await c.req.json()
-  const { company_name, contact_name, contact_email, contact_phone, website, industry, location, status, monthly_budget, notes } = body
+  const now = new Date().toISOString()
 
   await db.prepare(`
-    UPDATE clients SET company_name=?, contact_name=?, contact_email=?, contact_phone=?, website=?, industry=?, location=?, status=?, monthly_budget=?, notes=?, updated_at=?
+    UPDATE clients SET
+      company_name=?, contact_name=?, contact_email=?, contact_phone=?,
+      website=?, industry=?, location=?, timezone=?, monthly_budget=?,
+      notes=?, status=?,
+      abn=?, address=?, city=?, state=?, postcode=?, country=?,
+      account_manager=?, referral_source=?, contract_start=?, contract_end=?,
+      linkedin_url=?, facebook_url=?, instagram_handle=?,
+      google_business_id=?, ga4_property_id=?, gsc_property=?,
+      cms_platform=?, hosting_provider=?,
+      secondary_contact_name=?, secondary_contact_email=?,
+      updated_at=?
     WHERE id=?
-  `).bind(company_name, contact_name, contact_email, contact_phone, website, industry, location, status, monthly_budget, notes, new Date().toISOString(), id).run()
+  `).bind(
+    body.company_name, body.contact_name, body.contact_email, body.contact_phone || '',
+    body.website, body.industry || '', body.location || '', body.timezone || 'Australia/Sydney',
+    body.monthly_budget || 0, body.notes || '', body.status || 'prospect',
+    body.abn || '', body.address || '', body.city || '', body.state || '',
+    body.postcode || '', body.country || 'Australia',
+    body.account_manager || '', body.referral_source || '',
+    body.contract_start || null, body.contract_end || null,
+    body.linkedin_url || '', body.facebook_url || '', body.instagram_handle || '',
+    body.google_business_id || '', body.ga4_property_id || '', body.gsc_property || '',
+    body.cms_platform || 'wordpress', body.hosting_provider || '',
+    body.secondary_contact_name || '', body.secondary_contact_email || '',
+    now, id
+  ).run()
+
+  await db.prepare(
+    "INSERT INTO activity_log (client_id, activity_type, description) VALUES (?, 'client_updated', ?)"
+  ).bind(id, `Client profile updated: ${body.company_name}`).run()
 
   return c.json({ message: 'Client updated' })
 })
@@ -76,6 +154,53 @@ clientsRoutes.put('/:id', async (c) => {
 clientsRoutes.delete('/:id', async (c) => {
   const id = c.req.param('id')
   const db = c.env.DB
+  // Get client name for log
+  const client = await db.prepare('SELECT company_name FROM clients WHERE id = ?').bind(id).first() as any
   await db.prepare('DELETE FROM clients WHERE id = ?').bind(id).run()
+  await db.prepare(
+    "INSERT INTO activity_log (activity_type, description) VALUES ('client_deleted', ?)"
+  ).bind(`Client deleted: ${client?.company_name || id}`).run()
   return c.json({ message: 'Client deleted' })
+})
+
+// GET client stats summary
+clientsRoutes.get('/:id/stats', async (c) => {
+  const id = c.req.param('id')
+  const db = c.env.DB
+
+  const [rankStats, contentStats, billingStats, llmStats] = await Promise.all([
+    db.prepare(`
+      SELECT 
+        COUNT(*) as total_keywords,
+        COUNT(CASE WHEN rh.rank_position <= 3 THEN 1 END) as top3,
+        COUNT(CASE WHEN rh.rank_position <= 10 THEN 1 END) as top10,
+        AVG(rh.rank_position) as avg_position
+      FROM keywords k
+      LEFT JOIN rank_history rh ON rh.keyword_id = k.id
+      WHERE k.client_id = ?
+      AND (rh.tracked_at = (SELECT MAX(tracked_at) FROM rank_history rh2 WHERE rh2.keyword_id = k.id) OR rh.id IS NULL)
+    `).bind(id).first(),
+    db.prepare(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN status='published' THEN 1 END) as published,
+        COUNT(CASE WHEN status IN ('planned','briefed','in_progress','review') THEN 1 END) as in_pipeline
+      FROM content_items WHERE client_id = ?
+    `).bind(id).first(),
+    db.prepare(`
+      SELECT 
+        SUM(CASE WHEN status='succeeded' THEN amount ELSE 0 END) as total_paid,
+        COUNT(CASE WHEN status='succeeded' THEN 1 END) as payment_count
+      FROM payments WHERE client_id = ?
+    `).bind(id).first(),
+    db.prepare(`
+      SELECT COUNT(*) as total_prompts,
+        COUNT(CASE WHEN lmh.is_mentioned = 1 THEN 1 END) as mentioned
+      FROM llm_prompts lp
+      LEFT JOIN llm_mention_history lmh ON lmh.prompt_id = lp.id
+      WHERE lp.client_id = ?
+    `).bind(id).first(),
+  ])
+
+  return c.json({ rankStats, contentStats, billingStats, llmStats })
 })
