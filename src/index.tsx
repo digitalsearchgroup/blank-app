@@ -308,31 +308,42 @@ function getAppHTML(): string {
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
   <style>
-    .sidebar-link { @apply flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer; }
-    .sidebar-link.active { @apply text-white bg-white/20; }
-    .card { @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6; }
-    .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm; }
-    .btn-secondary { @apply bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-5 py-2.5 rounded-xl transition text-sm; }
-    .btn-success { @apply bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm; }
-    .btn-danger { @apply bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm; }
-    .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
-    .input-field { @apply w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500; }
-    .section-title { @apply text-xl font-bold text-gray-900 mb-1; }
-    .section-sub { @apply text-sm text-gray-500 mb-6; }
-    [x-cloak] { display: none; }
-    .modal-overlay { @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4; }
-    .modal-box { @apply bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto; }
-    .status-active { @apply badge bg-green-100 text-green-700; }
-    .status-prospect { @apply badge bg-yellow-100 text-yellow-700; }
-    .status-paused { @apply badge bg-gray-100 text-gray-600; }
-    .status-churned { @apply badge bg-red-100 text-red-600; }
-    .status-draft { @apply badge bg-gray-100 text-gray-600; }
-    .status-sent { @apply badge bg-blue-100 text-blue-600; }
-    .status-approved { @apply badge bg-green-100 text-green-700; }
-    .status-rejected { @apply badge bg-red-100 text-red-600; }
-    .status-planned { @apply badge bg-gray-100 text-gray-600; }
-    .status-in_progress { @apply badge bg-yellow-100 text-yellow-700; }
-    .status-published { @apply badge bg-green-100 text-green-700; }
+    /* Sidebar links — plain CSS, no @apply needed */
+    .sidebar-link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.75rem 1rem; border-radius: 0.75rem;
+      color: #bfdbfe; /* blue-200 */
+      background: transparent;
+      border: none; transition: all 0.15s;
+      cursor: pointer; width: 100%; text-align: left;
+    }
+    .sidebar-link:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .sidebar-link.active { color: #fff; background: rgba(255,255,255,0.2); }
+    .sidebar-link i, .sidebar-link span { color: inherit; }
+
+    /* Cards */
+    .card { background: #fff; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.07); border: 1px solid #f3f4f6; padding: 1.5rem; }
+
+    /* Buttons */
+    .btn-primary { background: #2563eb; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #f3f4f6; color: #374151; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .btn-success { background: #16a34a; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
+    .btn-success:hover { background: #15803d; }
+    .btn-danger { background: #dc2626; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
+    .btn-danger:hover { background: #b91c1c; }
+
+    /* Inputs */
+    .input-field { width: 100%; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 0.625rem 1rem; font-size: 0.875rem; outline: none; transition: box-shadow 0.15s; }
+    .input-field:focus { box-shadow: 0 0 0 2px #3b82f6; border-color: #3b82f6; }
+
+    /* Modals */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+    .modal-overlay.hidden { display: none; }
+    .modal-box { background: #fff; border-radius: 1rem; box-shadow: 0 25px 50px rgba(0,0,0,0.25); width: 100%; max-width: 42rem; max-height: 90vh; overflow-y: auto; }
+
+    /* Misc */
     .rank-improved { color: #16a34a; }
     .rank-declined { color: #dc2626; }
     .rank-new { color: #2563eb; }

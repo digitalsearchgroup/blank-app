@@ -124,9 +124,9 @@ function renderSidebar() {
       </div>
       <nav class="flex-1 p-3 space-y-1">
         ${links.map(l => `
-          <button onclick="navigate('${l.id}')" class="sidebar-link w-full text-left ${state.page === l.id ? 'active' : ''}">
-            <i class="fas ${l.icon} w-4 text-center"></i>
-            <span class="text-sm">${l.label}</span>
+          <button onclick="navigate('${l.id}')" class="flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition cursor-pointer ${state.page === l.id ? 'text-white bg-white/20' : 'text-blue-200 hover:text-white hover:bg-white/10'}">
+            <i class="fas ${l.icon} w-4 text-center" style="color:inherit"></i>
+            <span class="text-sm" style="color:inherit">${l.label}</span>
           </button>
         `).join('')}
       </nav>
