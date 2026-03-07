@@ -29,6 +29,8 @@ let state = {
   dataforseoStatus: null,
   editingClient: null,
   currentUser: null,      // logged-in team member
+  planTiers: null,        // plan tier list cache
+  campaignPlanData: null, // { plan, tasks, phases } for current campaign
   teamUsers: null,        // PM only: list of all team users
 };
 
@@ -154,6 +156,7 @@ function renderSidebar() {
     { id: 'dashboard', icon: 'fa-gauge-high', label: 'Dashboard', pmOnly: false },
     { id: 'clients', icon: 'fa-users', label: 'Clients', pmOnly: false },
     { id: 'campaigns', icon: 'fa-rocket', label: 'Campaigns', pmOnly: false },
+    { id: 'campaign_plans', icon: 'fa-tasks', label: 'Task Board', pmOnly: false },
     { id: 'proposals', icon: 'fa-file-contract', label: 'Proposals', pmOnly: false },
     { id: 'payments', icon: 'fa-credit-card', label: 'Billing & Payments', pmOnly: true },
     { id: 'keywords', icon: 'fa-magnifying-glass-chart', label: 'Rank Tracking', pmOnly: false },
@@ -226,6 +229,7 @@ function renderTopBar() {
     dataforseo: 'DataForSEO Tools',
     onboarding: 'Client Onboarding',
     team: 'Team Management',
+    campaign_plans: 'Campaign Plans & Task Board',
     onboarding_detail: state.selectedOnboarding?.company_name ? `Onboarding – ${state.selectedOnboarding.company_name}` : 'Onboarding Detail',
     client_detail: state.selectedClient?.company_name || 'Client Detail',
     campaign_detail: state.selectedCampaign?.name || 'Campaign Detail',
@@ -261,36 +265,13 @@ function renderTopBar() {
     </header>
   `;
 }
-  const addButtons = {
-    clients: `<button onclick="navigate('new_client')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Client</button>`,
-    proposals: `<button onclick="navigate('new_proposal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Proposal</button>`,
-    campaigns: `<button onclick="openModal('new_campaign_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Campaign</button>`,
-    keywords: `<button onclick="openModal('new_keyword_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Keywords</button>`,
-    llm: `<button onclick="openModal('new_llm_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Prompt</button>`,
-    content: `<button onclick="openModal('new_content_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Content</button>`,
-    social: `<button onclick="openModal('new_social_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Post</button>`,
-    press: `<button onclick="navigate('new_press')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Press Release</button>`,
-    wordpress: `<button onclick="openModal('new_wp_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New WP Project</button>`,
-    onboarding: `<button onclick="openModal('new_onboarding_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Onboarding</button>`,
-  };
-  return `
-    <header class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
-      <div>
-        <h1 class="text-lg font-bold text-gray-900">${titles[state.page] || state.page}</h1>
-        <p class="text-xs text-gray-400">Digital Search Group · ${new Date().toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}</p>
-      </div>
-      <div class="flex items-center gap-3">
-        ${addButtons[state.page] || ''}
-      </div>
-    </header>
-  `;
-}
 
 function renderPage() {
   const pages = {
     dashboard: renderDashboard,
     clients: renderClients,
     campaigns: renderCampaigns,
+    campaign_plans: renderCampaignPlans,
     proposals: renderProposals,
     payments: renderPayments,
     keywords: renderKeywords,
@@ -985,6 +966,15 @@ function renderCampaignDetail() {
               </div>
             </div>`).join('')}</div>`}
       </div>
+
+      <!-- Authority Task Board -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-900 text-lg"><i class="fas fa-tasks text-blue-500 mr-2"></i>Authority Task Board</h3>
+          ${!state.campaignPlanData?.plan ? `<button onclick="openModal('new_plan_modal')" class="btn-primary text-sm"><i class="fas fa-magic mr-2"></i>Create Plan</button>` : ''}
+        </div>
+        ${renderCampaignTaskBoard()}
+      </div>
     </div>
   `;
 }
@@ -1040,8 +1030,537 @@ function renderNewCampaignModal() {
 }
 
 // ==============================
-// PROPOSALS
+// CAMPAIGN PLANS & TASK BOARD
 // ==============================
+
+const PHASE_NAMES = {
+  1: 'Authority Foundation',
+  2: 'Authority Expansion',
+  3: 'Authority Acceleration',
+  4: 'Authority Compounding',
+};
+const PHASE_MONTHS = { 1: [1,2,3], 2: [4,5,6], 3: [7,8,9], 4: [10,11,12] };
+const PHASE_COLORS = {
+  1: { bg: 'bg-blue-50', border: 'border-blue-200', accent: 'text-blue-700', badge: 'bg-blue-600', prog: 'bg-blue-500' },
+  2: { bg: 'bg-purple-50', border: 'border-purple-200', accent: 'text-purple-700', badge: 'bg-purple-600', prog: 'bg-purple-500' },
+  3: { bg: 'bg-orange-50', border: 'border-orange-200', accent: 'text-orange-700', badge: 'bg-orange-600', prog: 'bg-orange-500' },
+  4: { bg: 'bg-green-50', border: 'border-green-200', accent: 'text-green-700', badge: 'bg-green-600', prog: 'bg-green-500' },
+};
+const CATEGORY_ICONS = {
+  foundation: 'fa-layer-group', technical: 'fa-wrench', on_page: 'fa-file-alt',
+  content: 'fa-pen-nib', authority_placement: 'fa-external-link-alt',
+  media_authority: 'fa-newspaper', entity_reinforcement: 'fa-sitemap',
+  amplification: 'fa-bolt', signal_acceleration: 'fa-tachometer-alt',
+  social: 'fa-share-nodes', reporting: 'fa-chart-line', review: 'fa-comments',
+  ai_visibility: 'fa-robot',
+};
+const TASK_STATUS_COLORS = {
+  pending: 'bg-gray-100 text-gray-600',
+  in_progress: 'bg-yellow-100 text-yellow-700',
+  review: 'bg-indigo-100 text-indigo-700',
+  completed: 'bg-green-100 text-green-700',
+  blocked: 'bg-red-100 text-red-600',
+  skipped: 'bg-gray-100 text-gray-400',
+};
+
+function renderCampaignPlans() {
+  if (!state.campaignPlansList) { loadCampaignPlans(); return loading(); }
+  const plans = state.campaignPlansList;
+
+  // Tier summary cards
+  const tierCounts = {};
+  plans.forEach(p => { tierCounts[p.tier_key] = (tierCounts[p.tier_key] || 0) + 1; });
+
+  return `
+    <div class="space-y-6">
+      <!-- Summary stats -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        ${[
+          { key: 'basic', label: 'AI Authority Foundation', color: 'blue', icon: 'fa-seedling', price: '$1,497' },
+          { key: 'core', label: 'AI Authority Growth', color: 'purple', icon: 'fa-chart-line', price: '$2,497' },
+          { key: 'ultimate', label: 'AI Authority Accelerator', color: 'orange', icon: 'fa-rocket', price: '$3,997' },
+          { key: 'xtreme', label: 'AI Market Domination', color: 'green', icon: 'fa-crown', price: '$5,997' },
+        ].map(t => `
+          <div class="card">
+            <div class="w-10 h-10 rounded-xl bg-${t.color}-100 flex items-center justify-center mb-3">
+              <i class="fas ${t.icon} text-${t.color}-600"></i>
+            </div>
+            <div class="text-2xl font-bold text-gray-900">${tierCounts[t.key] || 0}</div>
+            <div class="text-sm text-gray-700 font-medium mt-0.5">${t.label}</div>
+            <div class="text-xs text-gray-400 mt-1">${t.price}/mo · Active plans</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Plans table -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-tasks text-blue-500 mr-2"></i>All Campaign Plans</h3>
+          <button onclick="openModal('new_plan_modal')" class="btn-primary text-sm"><i class="fas fa-plus mr-2"></i>Create Plan</button>
+        </div>
+        ${plans.length === 0 ? `
+          <div class="text-center py-12 text-gray-400">
+            <i class="fas fa-tasks text-4xl mb-4 block"></i>
+            <p class="text-lg font-medium mb-2">No campaign plans yet</p>
+            <p class="text-sm mb-4">Create a plan to generate a 12-month task board for a campaign.</p>
+            <button onclick="openModal('new_plan_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Create First Plan</button>
+          </div>
+        ` : `
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
+                <th class="px-3 py-2 rounded-l-lg">Campaign</th>
+                <th class="px-3 py-2">Tier</th>
+                <th class="px-3 py-2">Progress</th>
+                <th class="px-3 py-2 text-center">Tasks</th>
+                <th class="px-3 py-2 text-center">Overdue</th>
+                <th class="px-3 py-2">Started</th>
+                <th class="px-3 py-2 rounded-r-lg">Action</th>
+              </tr></thead>
+              <tbody class="divide-y divide-gray-50">
+                ${plans.map(p => {
+                  const pct = p.total_tasks ? Math.round((p.completed_tasks / p.total_tasks) * 100) : 0;
+                  return `
+                    <tr class="hover:bg-gray-50">
+                      <td class="px-3 py-3">
+                        <div class="font-medium text-gray-900">${p.campaign_name}</div>
+                        <div class="text-xs text-gray-400">${p.company_name}</div>
+                      </td>
+                      <td class="px-3 py-3">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">${p.tier_client_name}</span>
+                      </td>
+                      <td class="px-3 py-3">
+                        <div class="flex items-center gap-2">
+                          <div class="flex-1 bg-gray-200 rounded-full h-2 min-w-20">
+                            <div class="bg-blue-500 h-2 rounded-full" style="width:${pct}%"></div>
+                          </div>
+                          <span class="text-xs text-gray-500 whitespace-nowrap">${pct}%</span>
+                        </div>
+                      </td>
+                      <td class="px-3 py-3 text-center">
+                        <span class="font-medium">${p.completed_tasks}</span><span class="text-gray-400">/${p.total_tasks}</span>
+                      </td>
+                      <td class="px-3 py-3 text-center">
+                        ${p.overdue_tasks > 0 ? `<span class="text-red-600 font-semibold">${p.overdue_tasks}</span>` : '<span class="text-gray-300">—</span>'}
+                      </td>
+                      <td class="px-3 py-3 text-xs text-gray-400">${p.start_date}</td>
+                      <td class="px-3 py-3">
+                        <button onclick="openPlanTaskBoard(${p.campaign_id})" class="btn-secondary text-xs"><i class="fas fa-th-list mr-1"></i>Task Board</button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+      </div>
+    </div>
+    ${renderNewPlanModal()}
+    ${renderTaskEditModal()}
+  `;
+}
+
+function renderNewPlanModal() {
+  const tiers = [
+    { key: 'basic', label: 'AI Authority Foundation', price: '$1,497/mo' },
+    { key: 'core', label: 'AI Authority Growth', price: '$2,497/mo' },
+    { key: 'ultimate', label: 'AI Authority Accelerator', price: '$3,997/mo' },
+    { key: 'xtreme', label: 'AI Market Domination', price: '$5,997/mo' },
+  ];
+  return `
+    <div id="new_plan_modal" class="modal-overlay hidden">
+      <div class="modal-box p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900">Create Campaign Plan</h3>
+          <button onclick="closeModal('new_plan_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <p class="text-sm text-gray-500 mb-5">Select a campaign and tier to auto-generate a 12-month task board with all deliverables.</p>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Campaign</label>
+            <select id="planCampaignId" class="input-field">
+              <option value="">Select campaign...</option>
+              ${(state.campaigns||[]).map(ca => `<option value="${ca.id}" data-client="${ca.client_id}">${ca.name} (${ca.company_name||''})</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Authority Tier</label>
+            <div class="space-y-2">
+              ${tiers.map(t => `
+                <label class="flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer hover:border-blue-300 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                  <input type="radio" name="planTier" value="${t.key}" class="accent-blue-600">
+                  <div class="flex-1">
+                    <div class="font-medium text-sm text-gray-900">${t.label}</div>
+                    <div class="text-xs text-gray-400">${t.price} · 12 months · Auto-generated deliverables</div>
+                  </div>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Campaign Start Date</label>
+            <input type="date" id="planStartDate" class="input-field" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+            <textarea id="planNotes" class="input-field" rows="2" placeholder="Any notes about this plan..."></textarea>
+          </div>
+          <div class="flex gap-3 mt-2">
+            <button onclick="closeModal('new_plan_modal')" class="btn-secondary flex-1">Cancel</button>
+            <button onclick="saveNewPlan()" class="btn-primary flex-1"><i class="fas fa-magic mr-2"></i>Generate 12-Month Plan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTaskEditModal() {
+  return `
+    <div id="task_edit_modal" class="modal-overlay hidden">
+      <div class="modal-box p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-lg font-bold text-gray-900" id="taskEditTitle">Update Task</h3>
+          <button onclick="closeModal('task_edit_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select id="taskEditStatus" class="input-field">
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="review">In Review</option>
+              <option value="completed">Completed</option>
+              <option value="blocked">Blocked</option>
+              <option value="skipped">Skipped</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+            <input type="text" id="taskEditAssigned" class="input-field" placeholder="Team member name or email">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Deliverable URL</label>
+            <input type="url" id="taskEditDelivUrl" class="input-field" placeholder="https://...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Reference URL</label>
+            <input type="url" id="taskEditRefUrl" class="input-field" placeholder="https://...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Internal Notes</label>
+            <textarea id="taskEditNotes" class="input-field" rows="3" placeholder="Notes for this task..."></textarea>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="taskEditClientVisible" class="w-4 h-4 accent-blue-600">
+            <label class="text-sm text-gray-700">Show in client report</label>
+          </div>
+          <div id="taskEditClientLabelRow" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client-Facing Label</label>
+            <input type="text" id="taskEditClientLabel" class="input-field" placeholder="Override label shown to client">
+          </div>
+          <input type="hidden" id="taskEditId">
+          <div class="flex gap-3">
+            <button onclick="closeModal('task_edit_modal')" class="btn-secondary flex-1">Cancel</button>
+            <button onclick="saveTaskEdit()" class="btn-primary flex-1"><i class="fas fa-save mr-2"></i>Save Task</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Render the full task board for a campaign
+function renderCampaignTaskBoard() {
+  const data = state.campaignPlanData;
+  if (!data || !data.plan) {
+    return `
+      <div class="card text-center py-12 text-gray-400">
+        <i class="fas fa-tasks text-4xl mb-4 block"></i>
+        <p class="text-lg font-medium mb-2">No Campaign Plan Yet</p>
+        <p class="text-sm mb-4">Create a plan to auto-generate the 12-month task board.</p>
+        <button onclick="openModal('new_plan_modal')" class="btn-primary"><i class="fas fa-magic mr-2"></i>Create Plan</button>
+      </div>
+      ${renderNewPlanModal()}
+      ${renderTaskEditModal()}
+    `;
+  }
+  const { plan, tasks, phases } = data;
+
+  // Build tasks grouped by month
+  const byMonth = {};
+  tasks.forEach(t => {
+    if (!byMonth[t.month_number]) byMonth[t.month_number] = [];
+    byMonth[t.month_number].push(t);
+  });
+
+  const currentFilter = state.taskBoardFilter || 'all';
+  const currentPhase = state.taskBoardPhase || 0; // 0 = all phases shown
+
+  return `
+    <div class="space-y-6">
+      <!-- Plan Header -->
+      <div class="card bg-gradient-to-r from-blue-900 to-blue-700 text-white">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div class="text-blue-200 text-xs font-medium uppercase tracking-wide mb-1">Campaign Authority Plan</div>
+            <h3 class="text-xl font-bold">${plan.campaign_name}</h3>
+            <p class="text-blue-200 text-sm">${plan.company_name} · Started ${plan.start_date}</p>
+          </div>
+          <div class="text-right">
+            <div class="text-2xl font-bold">${plan.tier_client_name}</div>
+            <div class="text-blue-200 text-sm">${fmtCurrency(plan.monthly_price)}/month</div>
+          </div>
+        </div>
+        <!-- Phase progress overview -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5 pt-5 border-t border-white/20">
+          ${phases.map(ph => {
+            const col = PHASE_COLORS[ph.phase];
+            return `
+              <div class="bg-white/10 rounded-xl p-3 cursor-pointer hover:bg-white/20 transition ${state.taskBoardPhase === ph.phase ? 'ring-2 ring-white' : ''}"
+                   onclick="filterTaskPhase(${ph.phase})">
+                <div class="text-xs font-semibold text-white/70 uppercase tracking-wide">Phase ${ph.phase}</div>
+                <div class="text-sm font-bold text-white mt-0.5">${ph.name}</div>
+                <div class="flex items-center gap-2 mt-2">
+                  <div class="flex-1 bg-white/20 rounded-full h-1.5">
+                    <div class="bg-white h-1.5 rounded-full transition-all" style="width:${ph.pct}%"></div>
+                  </div>
+                  <span class="text-xs text-white/80">${ph.pct}%</span>
+                </div>
+                <div class="text-xs text-white/60 mt-1">${ph.completed}/${ph.total} tasks</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
+          ${['all','pending','in_progress','review','completed','blocked'].map(s => `
+            <button onclick="filterTasks('${s}')" class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${currentFilter === s ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}">
+              ${s === 'all' ? 'All Tasks' : s.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </button>
+          `).join('')}
+        </div>
+        <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
+          <button onclick="filterTaskPhase(0)" class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${currentPhase === 0 ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}">All Phases</button>
+          ${[1,2,3,4].map(ph => `
+            <button onclick="filterTaskPhase(${ph})" class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${currentPhase === ph ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}">Phase ${ph}</button>
+          `).join('')}
+        </div>
+        <div class="ml-auto text-xs text-gray-400">
+          ${tasks.filter(t => t.status === 'completed').length}/${tasks.length} tasks completed
+        </div>
+      </div>
+
+      <!-- Task board by phase -->
+      ${[1,2,3,4].filter(ph => currentPhase === 0 || currentPhase === ph).map(ph => {
+        const col = PHASE_COLORS[ph];
+        const months = PHASE_MONTHS[ph];
+        const phaseTasksAll = tasks.filter(t => months.includes(t.month_number));
+        const phaseTasks = phaseTasksAll.filter(t => currentFilter === 'all' || t.status === currentFilter);
+        if (phaseTasks.length === 0 && currentFilter !== 'all') return '';
+        const phInfo = phases.find(p => p.phase === ph) || {};
+
+        return `
+          <div class="${col.bg} border ${col.border} rounded-2xl overflow-hidden">
+            <div class="px-6 py-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 ${col.badge} rounded-lg flex items-center justify-center text-white text-xs font-bold">${ph}</div>
+                <div>
+                  <div class="${col.accent} font-bold text-base">Phase ${ph} – ${PHASE_NAMES[ph]}</div>
+                  <div class="text-xs text-gray-500">Months ${months[0]}–${months[months.length-1]} · ${phInfo.completed || 0}/${phInfo.total || 0} tasks complete</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-24 bg-gray-200 rounded-full h-2">
+                  <div class="${col.prog} h-2 rounded-full transition-all" style="width:${phInfo.pct || 0}%"></div>
+                </div>
+                <span class="text-sm font-semibold ${col.accent}">${phInfo.pct || 0}%</span>
+              </div>
+            </div>
+
+            <!-- Months within phase -->
+            <div class="px-6 pb-6 space-y-4">
+              ${months.map(m => {
+                const monthTasks = phaseTasks.filter(t => t.month_number === m);
+                if (monthTasks.length === 0) return '';
+                const monthDone = monthTasks.filter(t => t.status === 'completed').length;
+                return `
+                  <div class="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">${m}</span>
+                        <span class="font-semibold text-sm text-gray-800">Month ${m}</span>
+                        <span class="text-xs text-gray-400">(${monthTasks.length} tasks, ${monthDone} done)</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        ${monthDone === monthTasks.length && monthTasks.length > 0 ? '<span class="text-xs text-green-600 font-semibold"><i class="fas fa-check-circle mr-1"></i>Complete</span>' : ''}
+                      </div>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                      ${monthTasks.map(t => {
+                        const statusCls = TASK_STATUS_COLORS[t.status] || 'bg-gray-100 text-gray-500';
+                        const catIcon = CATEGORY_ICONS[t.category] || 'fa-tasks';
+                        const isOverdue = t.due_date && new Date(t.due_date) < new Date() && t.status !== 'completed';
+                        return `
+                          <div class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition group">
+                            <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <i class="fas ${catIcon} text-xs text-gray-500"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                              <div class="flex items-start gap-2 flex-wrap">
+                                <span class="text-sm font-medium text-gray-900 flex-1">${t.title}</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusCls} flex-shrink-0">
+                                  ${t.status.replace(/_/g,' ')}
+                                </span>
+                              </div>
+                              <div class="flex items-center gap-3 mt-1 flex-wrap">
+                                <span class="text-xs text-gray-400 capitalize">${(t.category||'').replace(/_/g,' ')}</span>
+                                ${t.assigned_to ? `<span class="text-xs text-blue-600"><i class="fas fa-user mr-1"></i>${t.assigned_to}</span>` : ''}
+                                ${t.due_date ? `<span class="text-xs ${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'}"><i class="fas fa-calendar mr-1"></i>${t.due_date}${isOverdue ? ' ⚠' : ''}</span>` : ''}
+                                ${t.deliverable_url ? `<a href="${t.deliverable_url}" target="_blank" class="text-xs text-green-600 hover:underline"><i class="fas fa-external-link-alt mr-1"></i>Deliverable</a>` : ''}
+                                ${t.client_visible ? '<span class="text-xs text-purple-500"><i class="fas fa-eye mr-1"></i>Client visible</span>' : ''}
+                              </div>
+                              ${t.notes ? `<p class="text-xs text-gray-400 mt-1 line-clamp-1">${t.notes}</p>` : ''}
+                            </div>
+                            <div class="flex gap-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
+                              ${t.status !== 'completed' ? `
+                                <button onclick="quickCompleteTask(${t.id})" class="w-7 h-7 rounded-lg bg-green-100 hover:bg-green-200 flex items-center justify-center text-green-600" title="Mark complete">
+                                  <i class="fas fa-check text-xs"></i>
+                                </button>
+                              ` : ''}
+                              <button onclick="openTaskEdit(${JSON.stringify(t).replace(/"/g,'&quot;')})" class="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600" title="Edit task">
+                                <i class="fas fa-pen text-xs"></i>
+                              </button>
+                            </div>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                `;
+              }).filter(Boolean).join('')}
+              ${phaseTasks.length === 0 ? `<div class="text-center py-4 text-gray-400 text-sm">No ${currentFilter !== 'all' ? currentFilter.replace(/_/g,' ') : ''} tasks in this phase.</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).filter(Boolean).join('')}
+    </div>
+    ${renderNewPlanModal()}
+    ${renderTaskEditModal()}
+  `;
+}
+
+// Task board helper functions
+function filterTasks(status) {
+  state.taskBoardFilter = status;
+  render();
+}
+function filterTaskPhase(phase) {
+  state.taskBoardPhase = phase === state.taskBoardPhase ? 0 : phase;
+  render();
+}
+
+async function quickCompleteTask(taskId) {
+  try {
+    await API.patch(`/campaign-plans/tasks/${taskId}`, { status: 'completed' });
+    toast('Task marked complete ✓');
+    // Refresh plan data
+    if (state.selectedCampaign) await loadCampaignPlanData(state.selectedCampaign.id);
+    else if (state.campaignPlanData?.plan?.campaign_id) await loadCampaignPlanData(state.campaignPlanData.plan.campaign_id);
+  } catch (e) { toast('Failed to update task', 'error'); }
+}
+
+function openTaskEdit(task) {
+  if (typeof task === 'string') task = JSON.parse(task);
+  document.getElementById('taskEditId').value = task.id;
+  document.getElementById('taskEditTitle').textContent = task.title;
+  document.getElementById('taskEditStatus').value = task.status;
+  document.getElementById('taskEditAssigned').value = task.assigned_to || '';
+  document.getElementById('taskEditDelivUrl').value = task.deliverable_url || '';
+  document.getElementById('taskEditRefUrl').value = task.url_reference || '';
+  document.getElementById('taskEditNotes').value = task.notes || '';
+  document.getElementById('taskEditClientVisible').checked = !!task.client_visible;
+  const labelRow = document.getElementById('taskEditClientLabelRow');
+  labelRow.classList.toggle('hidden', !task.client_visible);
+  document.getElementById('taskEditClientLabel').value = task.client_label || '';
+  document.getElementById('taskEditClientVisible').onchange = function() {
+    labelRow.classList.toggle('hidden', !this.checked);
+  };
+  openModal('task_edit_modal');
+}
+
+async function saveTaskEdit() {
+  const id = document.getElementById('taskEditId').value;
+  const data = {
+    status: document.getElementById('taskEditStatus').value,
+    assigned_to: document.getElementById('taskEditAssigned').value || null,
+    deliverable_url: document.getElementById('taskEditDelivUrl').value || null,
+    url_reference: document.getElementById('taskEditRefUrl').value || null,
+    notes: document.getElementById('taskEditNotes').value || null,
+    client_visible: document.getElementById('taskEditClientVisible').checked ? 1 : 0,
+    client_label: document.getElementById('taskEditClientLabel').value || null,
+  };
+  try {
+    await API.patch(`/campaign-plans/tasks/${id}`, data);
+    closeModal('task_edit_modal');
+    toast('Task updated');
+    const campaignId = state.selectedCampaign?.id || state.campaignPlanData?.plan?.campaign_id;
+    if (campaignId) await loadCampaignPlanData(campaignId);
+  } catch (e) { toast('Failed to save task', 'error'); }
+}
+
+async function saveNewPlan() {
+  const campaignSel = document.getElementById('planCampaignId');
+  const tierSel = document.querySelector('input[name="planTier"]:checked');
+  const startDate = document.getElementById('planStartDate').value;
+  const notes = document.getElementById('planNotes').value;
+
+  if (!campaignSel?.value) { toast('Please select a campaign', 'warning'); return; }
+  if (!tierSel) { toast('Please select an authority tier', 'warning'); return; }
+  if (!startDate) { toast('Please enter a start date', 'warning'); return; }
+
+  const opt = campaignSel.options[campaignSel.selectedIndex];
+  const clientId = opt.getAttribute('data-client');
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+
+  try {
+    const res = await API.post('/campaign-plans', {
+      campaign_id: parseInt(campaignSel.value),
+      client_id: parseInt(clientId),
+      tier_key: tierSel.value,
+      start_date: startDate,
+      notes,
+    });
+    closeModal('new_plan_modal');
+    toast(`Plan created! ${res.data.tasks_generated} tasks generated.`);
+    state.campaignPlansList = null;
+    await loadCampaignPlans();
+    openPlanTaskBoard(parseInt(campaignSel.value));
+  } catch (e) {
+    const msg = e?.response?.data?.error || 'Failed to create plan';
+    toast(msg, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-magic mr-2"></i>Generate 12-Month Plan';
+  }
+}
+
+async function openPlanTaskBoard(campaignId) {
+  await loadCampaignPlanData(campaignId);
+  // Find campaign
+  const ca = state.campaigns.find(c => c.id === campaignId);
+  if (ca) state.selectedCampaign = ca;
+  navigate('campaign_detail', {});
+}
+
+// ==============================
+// PROPOSALS
 function renderProposals() {
   if (!state.proposals) { loadProposals(); return loading(); }
   return `
@@ -1119,7 +1638,36 @@ function renderNewProposal() {
       </button>
 
       <div class="card">
-        <h2 class="text-lg font-bold text-gray-900 mb-5">Create New Proposal</h2>
+        <h2 class="text-lg font-bold text-gray-900 mb-2">Create New Proposal</h2>
+        <p class="text-sm text-gray-500 mb-5">Select an AI Authority Tier to auto-populate pricing, scope, and strategic framing.</p>
+
+        <!-- Authority Tier Selector -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium text-gray-700 mb-3"><i class="fas fa-layer-group text-blue-500 mr-1"></i>Select Authority Tier</label>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            ${[
+              { key: 'basic', name: 'AI Authority Foundation', price: 1497, color: 'blue', icon: 'fa-seedling', desc: 'Core authority placement layer with foundational media trust signals.' },
+              { key: 'core', name: 'AI Authority Growth', price: 2497, color: 'purple', icon: 'fa-chart-line', desc: 'Multi-tier authority placements with quarterly media injections.' },
+              { key: 'ultimate', name: 'AI Authority Accelerator', price: 3997, color: 'orange', icon: 'fa-rocket', desc: 'High-velocity placements, premium media injections & amplification.' },
+              { key: 'xtreme', name: 'AI Market Domination', price: 5997, color: 'green', icon: 'fa-crown', desc: 'Double media injections, aggressive entity saturation & amplification.' },
+            ].map(t => `
+              <label class="cursor-pointer group" onclick="selectTier('${t.key}', ${t.price})">
+                <input type="radio" name="authorityTier" value="${t.key}" class="hidden">
+                <div id="tierCard_${t.key}" class="border-2 border-gray-200 rounded-xl p-4 hover:border-${t.color}-400 transition-all">
+                  <div class="flex items-center gap-2 mb-2">
+                    <div class="w-8 h-8 rounded-lg bg-${t.color}-100 flex items-center justify-center">
+                      <i class="fas ${t.icon} text-${t.color}-600 text-sm"></i>
+                    </div>
+                    <span class="text-sm font-bold text-gray-900">${fmtCurrency(t.price)}<span class="text-xs text-gray-400">/mo</span></span>
+                  </div>
+                  <div class="text-xs font-semibold text-gray-800 mb-1">${t.name}</div>
+                  <div class="text-xs text-gray-400 leading-relaxed">${t.desc}</div>
+                </div>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
           <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1">Client *</label>
@@ -2129,28 +2677,98 @@ function renderBriefModal() {
 function renderReports() {
   if (!state.reports) { loadReports(); return loading(); }
   return `
-    <div class="space-y-4">
-      ${(state.reports||[]).length === 0 ? `<div class="card text-center py-12 text-gray-400">No reports yet. Generate one from a campaign.</div>` :
-        (state.reports||[]).map(r => `
-          <div class="card flex items-center justify-between">
-            <div>
-              <h3 class="font-semibold text-gray-900">${r.company_name} — ${r.report_period}</h3>
-              <p class="text-sm text-gray-500">${r.campaign_name} · ${r.report_type} report</p>
-              <div class="flex gap-4 mt-2 text-xs text-gray-400">
-                <span>↑ ${r.keywords_improved} improved</span>
-                <span>★ ${r.top10_keywords} in top 10</span>
-                <span>📝 ${r.content_published} published</span>
+    <div class="space-y-6">
+
+      <!-- Authority Reporting Overview -->
+      <div class="card bg-gradient-to-r from-slate-800 to-slate-700 text-white">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div class="text-slate-300 text-xs font-semibold uppercase tracking-widest mb-1">Authority Velocity Reporting</div>
+            <h2 class="text-xl font-bold">Client Performance Reports</h2>
+            <p class="text-slate-300 text-sm mt-1">Generate authority velocity snapshots with AI visibility indicators and phase-based progress reporting.</p>
+          </div>
+          <button onclick="navigate('campaign_detail')" class="btn-secondary text-sm bg-white/10 hover:bg-white/20 border-0 text-white">
+            <i class="fas fa-chart-line mr-2"></i>Generate from Campaign
+          </button>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5 pt-5 border-t border-white/20">
+          ${[
+            { label: 'Total Reports', val: (state.reports||[]).length, icon: 'fa-file-chart-line' },
+            { label: 'Sent to Clients', val: (state.reports||[]).filter(r => r.status === 'sent' || r.status === 'viewed').length, icon: 'fa-paper-plane' },
+            { label: 'Viewed', val: (state.reports||[]).filter(r => r.status === 'viewed').length, icon: 'fa-eye' },
+            { label: 'Draft', val: (state.reports||[]).filter(r => r.status === 'draft').length, icon: 'fa-file-pen' },
+          ].map(s => `
+            <div class="bg-white/10 rounded-xl p-3">
+              <div class="text-2xl font-bold text-white">${s.val}</div>
+              <div class="text-xs text-slate-300 mt-0.5"><i class="fas ${s.icon} mr-1"></i>${s.label}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Report Format Guide -->
+      <div class="card border-l-4 border-blue-500">
+        <h3 class="font-semibold text-gray-900 mb-3"><i class="fas fa-info-circle text-blue-500 mr-2"></i>Authority Report Format</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+          ${[
+            { icon: 'fa-bolt', title: 'Authority Velocity Snapshot', desc: 'Overall authority momentum – keyword movement, domain authority trajectory, media placements completed this period.' },
+            { icon: 'fa-newspaper', title: 'Media & Authority Layer Update', desc: 'Summary of all authority placements, media injections, and amplification frameworks deployed.' },
+            { icon: 'fa-robot', title: 'AI Visibility Indicators', desc: 'Brand mention rates in ChatGPT, Gemini, Perplexity, and Google AI Overviews vs. competitors.' },
+            { icon: 'fa-chess', title: 'Competitive Authority Movement', desc: 'Side-by-side authority gap analysis showing your position vs. top competitors.' },
+          ].map(s => `
+            <div class="flex gap-3">
+              <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <i class="fas ${s.icon} text-blue-600 text-xs"></i>
+              </div>
+              <div>
+                <div class="font-medium text-gray-800 text-xs mb-0.5">${s.title}</div>
+                <div class="text-xs text-gray-500">${s.desc}</div>
               </div>
             </div>
-            <div class="flex gap-2 items-center">
-              ${statusBadge(r.status)}
-              ${r.report_token ? `
-                <a href="/reports/view/${r.report_token}" target="_blank" class="btn-secondary text-xs"><i class="fas fa-eye mr-1"></i>View</a>
-                <button onclick="sendReport(${r.id})" class="btn-primary text-xs"><i class="fas fa-paper-plane mr-1"></i>Send</button>
-              ` : ''}
-            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Reports List -->
+      <div class="space-y-3">
+        ${(state.reports||[]).length === 0 ? `
+          <div class="card text-center py-12 text-gray-400">
+            <i class="fas fa-chart-line text-4xl mb-4 block"></i>
+            <p class="text-lg font-medium mb-2">No reports yet</p>
+            <p class="text-sm">Generate a report from a campaign's detail page.</p>
           </div>
-        `).join('')}
+        ` :
+          (state.reports||[]).map(r => `
+            <div class="card">
+              <div class="flex items-start justify-between flex-wrap gap-4">
+                <div class="flex gap-4">
+                  <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-chart-line text-blue-600"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-semibold text-gray-900">${r.company_name} — ${r.report_period}</h3>
+                    <p class="text-sm text-gray-500">${r.campaign_name} · ${r.report_type} report</p>
+                    <div class="flex gap-4 mt-2 text-xs flex-wrap">
+                      <span class="text-green-600"><i class="fas fa-arrow-up mr-1"></i>${r.keywords_improved} keywords improved</span>
+                      <span class="text-blue-600"><i class="fas fa-star mr-1"></i>${r.top10_keywords} in top 10</span>
+                      <span class="text-purple-600"><i class="fas fa-trophy mr-1"></i>${r.top3_keywords || 0} in top 3</span>
+                      <span class="text-gray-500"><i class="fas fa-pen-nib mr-1"></i>${r.content_published} published</span>
+                    </div>
+                    ${r.viewed_at ? `<p class="text-xs text-green-600 mt-1"><i class="fas fa-eye mr-1"></i>Viewed ${ago(r.viewed_at)}</p>` : ''}
+                  </div>
+                </div>
+                <div class="flex gap-2 items-center">
+                  ${statusBadge(r.status)}
+                  ${r.report_token ? `
+                    <a href="/reports/view/${r.report_token}" target="_blank" class="btn-secondary text-xs"><i class="fas fa-eye mr-1"></i>View</a>
+                    ${r.status === 'draft' || r.status === 'ready' ? `<button onclick="sendReport(${r.id})" class="btn-primary text-xs"><i class="fas fa-paper-plane mr-1"></i>Send to Client</button>` : ''}
+                  ` : ''}
+                </div>
+              </div>
+              ${r.summary ? `<p class="text-sm text-gray-500 mt-3 pt-3 border-t line-clamp-2">${r.summary}</p>` : ''}
+            </div>
+          `).join('')}
+      </div>
     </div>
   `;
 }
@@ -2285,8 +2903,27 @@ async function loadCampaignDetail(id) {
   try {
     const res = await API.get('/campaigns/' + id);
     state.selectedCampaign = { ...res.data, _loaded: true };
+    // Also load the campaign plan if not already loaded
+    if (!state.campaignPlanData || state.campaignPlanData.plan?.campaign_id !== id) {
+      await loadCampaignPlanData(id);
+    }
     render();
   } catch (e) { toast('Failed to load campaign', 'error'); }
+}
+
+async function loadCampaignPlanData(campaignId) {
+  try {
+    const res = await API.get(`/campaign-plans/campaign/${campaignId}`);
+    state.campaignPlanData = res.data;
+  } catch (e) { state.campaignPlanData = { plan: null, tasks: [], phases: [] }; }
+}
+
+async function loadCampaignPlans() {
+  try {
+    const res = await API.get('/campaign-plans');
+    state.campaignPlansList = res.data;
+    render();
+  } catch (e) { console.error('Campaign plans load failed:', e); }
 }
 
 async function loadProposals() {
@@ -2455,6 +3092,30 @@ async function saveNewCampaign() {
 }
 
 // Proposal actions
+const TIER_PRICES = { basic: 1497, core: 2497, ultimate: 3997, xtreme: 5997 };
+function selectTier(tierKey, price) {
+  // Update visual selection
+  ['basic','core','ultimate','xtreme'].forEach(k => {
+    const card = document.getElementById(`tierCard_${k}`);
+    if (!card) return;
+    card.className = card.className.replace(/border-(blue|purple|orange|green)-500 bg-(blue|purple|orange|green)-50/g, 'border-gray-200');
+  });
+  const colors = { basic: 'blue', core: 'purple', ultimate: 'orange', xtreme: 'green' };
+  const card = document.getElementById(`tierCard_${tierKey}`);
+  if (card) {
+    const col = colors[tierKey];
+    card.className = `border-2 border-${col}-500 bg-${col}-50 rounded-xl p-4 transition-all`;
+  }
+  // Set price
+  const priceEl = document.getElementById('pInvestment');
+  if (priceEl) priceEl.value = price;
+  // Set radio
+  const radio = document.querySelector(`input[name="authorityTier"][value="${tierKey}"]`);
+  if (radio) radio.checked = true;
+  // Store selected tier
+  state._selectedTier = tierKey;
+}
+
 async function generateProposal() {
   const clientId = document.getElementById('pClientId')?.value;
   if (!clientId) { toast('Please select a client first', 'warning'); return; }
@@ -2471,6 +3132,7 @@ async function generateProposal() {
       target_keywords: document.getElementById('pKeywords')?.value,
       competitor_domains: document.getElementById('pCompetitors')?.value,
       goals: document.getElementById('pGoals')?.value,
+      tier_key: state._selectedTier || null,
     });
     const d = res.data;
     state._generatedProposal = d;

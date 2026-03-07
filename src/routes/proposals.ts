@@ -199,18 +199,28 @@ proposalsRoutes.post('/:id/send', async (c) => {
 proposalsRoutes.post('/generate', async (c) => {
   const db = c.env.DB
   const body = await c.req.json()
-  const { client_id, proposal_type, monthly_investment, contract_length, target_keywords, competitor_domains, goals, setup_fee } = body
+  const { client_id, proposal_type, monthly_investment, contract_length, target_keywords, competitor_domains, goals, setup_fee, tier_key } = body
 
   const client = await db.prepare('SELECT * FROM clients WHERE id = ?').bind(client_id).first() as any
   if (!client) return c.json({ error: 'Client not found' }, 404)
 
+  // Optionally load tier data for premium framing
+  let tier: any = null
+  if (tier_key) {
+    tier = await db.prepare('SELECT * FROM plan_tiers WHERE tier_key = ?').bind(tier_key).first() as any
+  }
+
   const type = PROPOSAL_TYPES[proposal_type] || 'Organic Digital Marketing'
-  const monthlyInv = Number(monthly_investment || 1500)
+  // Use tier price if a tier is selected, otherwise use provided value
+  const monthlyInv = tier ? tier.monthly_price : Number(monthly_investment || 1500)
   const contractLen = Number(contract_length || 12)
   const keywords = target_keywords ? target_keywords.split(',').map((k: string) => k.trim()).filter(Boolean).slice(0, 8) : []
   const competitors = competitor_domains ? competitor_domains.split(',').map((d: string) => d.trim()).filter(Boolean).slice(0, 3) : []
 
-  const title = `${type} Proposal – ${client.company_name}`
+  // Title uses premium authority framing if tier is selected
+  const title = tier
+    ? `${tier.client_name} – ${client.company_name} Authority Engineering Proposal`
+    : `${type} Proposal – ${client.company_name}`
 
   // Build deliverables based on proposal type
   const deliverablesByType: Record<string, string[]> = {
@@ -294,7 +304,22 @@ proposalsRoutes.post('/generate', async (c) => {
 
   const deliverables = (deliverablesByType[proposal_type] || deliverablesByType.organic_seo).join('\n')
 
-  const scope = `Digital Search Group will deliver a results-focused ${type} strategy for ${client.company_name} (${client.website}).
+  // Build tier-specific scope framing
+  const tierScopeIntro = tier ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${tier.client_name.toUpperCase()} · ${fmtPrice(tier.monthly_price)}/month
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${tier.description}
+
+STRATEGIC PHASES:
+  Phase 1 – Authority Foundation (Months 1–3): ${tier.phase1_outcome}
+  Phase 2 – Authority Expansion (Months 4–6): ${tier.phase2_outcome}
+  Phase 3 – Authority Acceleration (Months 7–9): ${tier.phase3_outcome}
+  Phase 4 – Authority Compounding (Months 10–12): ${tier.phase4_outcome}
+
+` : ''
+
+  const scope = `${tierScopeIntro}Digital Search Group will deliver a results-focused ${tier ? tier.client_name : type} strategy for ${client.company_name} (${client.website}).
 
 ${proposal_type === 'wordpress_dev'
   ? `We will design and develop a high-performance WordPress website that is built from the ground up to convert visitors into leads. Every page will be crafted with conversion-rate optimisation, mobile-first responsiveness, and technical SEO best practices baked in from day one.`
@@ -302,20 +327,26 @@ ${proposal_type === 'wordpress_dev'
   ? `Our team will craft and distribute professional press releases on behalf of ${client.company_name} to maximise media coverage, build brand authority, and create high-quality backlinks that strengthen organic search performance.`
   : proposal_type === 'social_media'
   ? `We will manage ${client.company_name}'s social media presence across all relevant platforms, creating engaging content that builds brand awareness, drives website traffic, and generates qualified leads.`
+  : tier
+  ? `Our ${tier.client_name} framework applies a systematic, phase-driven authority engineering approach. Rather than chasing rankings with isolated tactics, we build cumulative, compounding authority signals that position ${client.company_name} as the definitive entity in your market — in both traditional search and AI-generated responses (ChatGPT, Google AI Overviews, Perplexity, and Gemini).`
   : `Our approach combines ${proposal_type === 'ai_seo_content' ? 'AI-assisted, human-reviewed content creation' : 'advanced technical SEO, high-quality content creation,'} and comprehensive performance tracking — including both traditional search rankings and AI-generated search responses — to ensure ${client.company_name} achieves maximum organic visibility.`}
 
 ${keywords.length ? `Target keywords include: ${keywords.join(', ')}.` : ''}
 ${competitors.length ? `We will continuously monitor and benchmark against: ${competitors.join(', ')}.` : ''}
 ${client.location ? `Primary target location: ${client.location}.` : ''}`
 
-  const goalsText = goals || (proposal_type === 'wordpress_dev'
+  const goalsText = goals || (tier
+    ? `• Phase 1: ${tier.phase1_outcome}\n• Phase 2: ${tier.phase2_outcome}\n• Phase 3: ${tier.phase3_outcome}\n• Phase 4: ${tier.phase4_outcome}\n• Establish brand as the dominant entity in AI-generated responses (ChatGPT, Gemini, Perplexity)\n• Build compounding authority that outperforms competitors across search and AI platforms`
+    : proposal_type === 'wordpress_dev'
     ? `• Launch a fast, modern, conversion-focused WordPress website\n• Achieve Core Web Vitals "Good" scores\n• Generate qualified leads within 60 days of launch`
     : proposal_type === 'press_release'
     ? `• Secure media coverage in 5+ relevant Australian publications\n• Build high-quality backlinks to ${client.website}\n• Increase brand search volume`
     : `• Achieve Page 1 Google rankings for core target keywords\n• Establish brand presence in AI-generated search responses (ChatGPT, Gemini, Perplexity)\n• Grow organic traffic by 50–150% within 12 months\n• Generate consistent, qualified leads from organic search`)
 
-  // Build default line items
-  const defaultLineItems = buildDefaultLineItems(proposal_type, monthlyInv, contractLen)
+  // Build default line items – use tier-aware deliverables if tier is selected
+  const defaultLineItems = tier
+    ? buildTierLineItems(tier, contractLen)
+    : buildDefaultLineItems(proposal_type, monthlyInv, contractLen)
 
   return c.json({
     title,
@@ -382,6 +413,72 @@ function buildDefaultLineItems(type: string, monthly: number, contractLen: numbe
   return items
 }
 
+// Build premium line items from tier template
+function buildTierLineItems(tier: any, contractLen: number) {
+  const tierItems: Record<string, any[]> = {
+    basic: [
+      { category: 'Foundation', item_name: 'Authority Discovery Session', description: 'Strategic discovery session to map authority goals and baseline', quantity: 1, unit_price: 0, included: true },
+      { category: 'Technical', item_name: 'Technical Authority Audit', description: 'Comprehensive technical authority barrier identification', quantity: 1, unit_price: 0, included: true },
+      { category: 'On-Page', item_name: 'Entity Alignment & Intent Structuring', description: 'On-page optimisation for core URLs', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Authority Placement', item_name: 'Authority Placement Layer – Tier 1', description: 'Guest post on established domain (1k+ traffic)', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Media Authority', item_name: 'Media Authority Injection', description: 'Google News authority link placement', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Entity Signals', item_name: 'Entity Signal Reinforcement – Level 1', description: 'Core entity signal reinforcement layer', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Signal Acceleration', item_name: 'Signal Acceleration & Discovery Layer', description: 'Accelerate indexation across all placements', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Content', item_name: 'Content Authority Publishing', description: 'Authority content creation for topical relevance expansion', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Reporting', item_name: 'Authority Intelligence Dashboard', description: 'Live authority intelligence dashboard setup', quantity: 1, unit_price: 0, included: true },
+      { category: 'Reporting', item_name: 'Monthly Authority Velocity Report', description: 'Rankings, traffic, content, AI visibility authority velocity snapshot', quantity: contractLen, unit_price: 0, included: true },
+    ],
+    core: [
+      { category: 'Foundation', item_name: 'Authority Discovery Session', description: 'Strategic discovery session', quantity: 1, unit_price: 0, included: true },
+      { category: 'Technical', item_name: 'Technical Authority Audit', description: 'Comprehensive technical audit', quantity: 1, unit_price: 0, included: true },
+      { category: 'On-Page', item_name: 'Entity Alignment & Intent Structuring', description: 'On-page optimisation for core URLs', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Authority Placement', item_name: 'Authority Placement Layer – Tier 1', description: '1k traffic site placement', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Authority Placement', item_name: 'Authority Placement Layer – Tier 2', description: '3k traffic site placement', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Media Authority', item_name: 'Media Authority Injection', description: 'Google News authority link', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Entity Signals', item_name: 'Entity Signal Reinforcement – Level 2', description: 'Enhanced entity signal reinforcement', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Amplification', item_name: 'Authority Amplification Framework', description: 'Tiered link authority stack deployment', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Signal Acceleration', item_name: 'Signal Acceleration & Discovery Layer', description: 'Accelerate signal discovery', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Content', item_name: 'Content Authority Publishing', description: 'Authority content creation', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Reporting', item_name: 'Monthly Authority Velocity Report', description: 'Authority performance reporting', quantity: contractLen, unit_price: 0, included: true },
+    ],
+    ultimate: [
+      { category: 'Foundation', item_name: 'Authority Discovery Session', description: 'Strategic discovery session', quantity: 1, unit_price: 0, included: true },
+      { category: 'Technical', item_name: 'Technical Authority Audit', description: 'Comprehensive technical audit', quantity: 1, unit_price: 0, included: true },
+      { category: 'On-Page', item_name: 'Premium Entity Alignment & Intent Structuring', description: 'Premium on-page for all core URLs', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Authority Placement', item_name: 'Authority Placement Layer – Tier 1', description: '1k traffic site', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Authority Placement', item_name: 'Authority Placement Layer – Tier 2', description: '3k traffic site', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Authority Placement', item_name: 'Authority Placement Layer – Tier 3', description: '7k traffic premium domain', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Media Authority', item_name: 'Media Authority Injection', description: 'Google News authority link', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Entity Signals', item_name: 'Entity Signal Reinforcement – Level 3', description: 'Advanced entity signal reinforcement', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Amplification', item_name: 'Authority Amplification Framework', description: 'Tiered link stack', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'AI Visibility', item_name: 'AI Overview Content Engineering', description: 'Structure content for AI citation', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'AI Visibility', item_name: 'Generative Retrieval Optimisation', description: 'FAQ architecture for AI retrieval', quantity: 3, unit_price: 0, included: true },
+      { category: 'Signal Acceleration', item_name: 'Signal Acceleration & Discovery Layer', description: 'Accelerate indexation', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Content', item_name: 'Content Authority Publishing', description: 'Authority content creation', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Reporting', item_name: 'Monthly Authority Velocity Report', description: 'Full authority performance reporting', quantity: contractLen, unit_price: 0, included: true },
+    ],
+    xtreme: [
+      { category: 'Foundation', item_name: 'Authority Discovery Session', description: 'Strategic discovery session', quantity: 1, unit_price: 0, included: true },
+      { category: 'Technical', item_name: 'Technical Authority Audit', description: 'Comprehensive technical audit', quantity: 1, unit_price: 0, included: true },
+      { category: 'On-Page', item_name: 'Premium Entity Alignment & Intent Structuring', description: 'Premium on-page for all core URLs', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Authority Placement', item_name: 'Dual Authority Placement – Tier 1', description: '2x 1k traffic placements', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Authority Placement', item_name: 'Dual Authority Placement – Tier 2', description: '2x 3k traffic placements', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Authority Placement', item_name: 'Dual Authority Placement – Tier 3', description: '2x 7k traffic premium placements', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Media Authority', item_name: 'Dual Media Authority Injection', description: '2x Google News authority links', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Entity Signals', item_name: 'Entity Signal Reinforcement – Level 4', description: 'Maximum entity signal reinforcement', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Amplification', item_name: 'Dual Authority Amplification Framework', description: '2x tiered link stacks', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'AI Visibility', item_name: 'AI Overview Content Engineering', description: 'Structure content for AI citation', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'AI Visibility', item_name: 'Generative Retrieval Optimisation', description: 'FAQ architecture for AI retrieval', quantity: 4, unit_price: 0, included: true },
+      { category: 'AI Visibility', item_name: 'Entity Relationship Architecture', description: 'Entity relationship mapping for LLM parsing', quantity: 3, unit_price: 0, included: true },
+      { category: 'AI Visibility', item_name: 'Schema Authority Reinforcement', description: 'Advanced schema markup for AI trust', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Signal Acceleration', item_name: 'Signal Acceleration & Discovery Layer', description: 'Maximum velocity signal acceleration', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Content', item_name: 'Content Authority Publishing', description: 'Authority content creation', quantity: contractLen, unit_price: 0, included: true },
+      { category: 'Reporting', item_name: 'Monthly Authority Velocity Report', description: 'Full authority performance reporting', quantity: contractLen, unit_price: 0, included: true },
+    ],
+  }
+  return tierItems[tier.tier_key] || tierItems.core
+}
+
 // DELETE proposal
 proposalsRoutes.delete('/:id', async (c) => {
   const id = c.req.param('id')
@@ -395,6 +492,11 @@ proposalsRoutes.delete('/:id', async (c) => {
 proposalsRoutes.get('/types/list', async (c) => {
   return c.json(Object.entries(PROPOSAL_TYPES).map(([value, label]) => ({ value, label })))
 })
+
+// Helper for formatting currency in proposal text
+function fmtPrice(n: number): string {
+  return '$' + Number(n).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
 
 // POST duplicate proposal
 proposalsRoutes.post('/:id/duplicate', async (c) => {

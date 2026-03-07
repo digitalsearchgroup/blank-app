@@ -17,6 +17,7 @@ import { paymentsRoutes } from './routes/payments'
 import { wordpressRoutes } from './routes/wordpress'
 import { socialRoutes, pressReleaseRoutes } from './routes/social-press'
 import { onboardingRoutes } from './routes/onboarding'
+import { campaignPlansRoutes } from './routes/campaign-plans'
 import { authRoutes, getSessionUser, getTokenFromRequest, hasPermission } from './routes/auth'
 
 type Bindings = {
@@ -87,6 +88,7 @@ app.route('/api/wordpress', wordpressRoutes)
 app.route('/api/social', socialRoutes)
 app.route('/api/press-releases', pressReleaseRoutes)
 app.route('/api/onboarding', onboardingRoutes)
+app.route('/api/campaign-plans', campaignPlansRoutes)
 
 // -------------------------------------------------------
 // GET /login – login page (always public)
