@@ -1819,15 +1819,10 @@ function getLoginPageHTML(): string {
       <!-- Logo -->
       <div style="margin-bottom:48px">
         <img
-          src="https://www.digitalsearchgroup.co.uk/wp-content/uploads/2023/09/Logo-1.png.webp"
+          src="/static/dsg-logo-white.png"
           alt="Digital Search Group"
           class="dsg-logo-img"
-          onerror="this.style.display='none';this.nextElementSibling.style.display='block'"
         >
-        <div style="display:none">
-          <div style="font-family:'Maven Pro',sans-serif;font-weight:900;font-size:22px;color:#fff;letter-spacing:0.04em">DIGITAL SEARCH</div>
-          <div style="font-family:'Maven Pro',sans-serif;font-weight:500;font-size:13px;color:rgba(255,255,255,0.45);letter-spacing:0.2em">GROUP</div>
-        </div>
       </div>
 
       <!-- Headline -->
@@ -1871,14 +1866,9 @@ function getLoginPageHTML(): string {
   <div class="right-panel">
     <div class="login-box anim-2">
 
-      <!-- Mobile logo (only shows on small screens) -->
-      <div class="mobile-logo">
-        <img
-          src="https://www.digitalsearchgroup.co.uk/wp-content/uploads/2023/09/Logo-1.png.webp"
-          alt="Digital Search Group"
-          style="height:36px;object-fit:contain"
-          onerror="this.style.display='none'"
-        >
+      <!-- Logo brand block — white DSG logo on purple gradient -->
+      <div style="margin-bottom:32px;border-radius:14px;background:linear-gradient(135deg,#5b21b6 0%,#7C5CFC 50%,#6d28d9 100%);padding:22px 32px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 30px rgba(124,92,252,0.45),0 2px 8px rgba(0,0,0,0.2)">
+        <img src="/static/dsg-logo-white.png" alt="Digital Search Group" style="height:52px;object-fit:contain;display:block">
       </div>
 
       <div style="margin-bottom:32px">

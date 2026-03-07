@@ -328,15 +328,10 @@ function renderSidebar() {
       <!-- Logo -->
       <div class="sb-logo">
         <img
-          src="https://www.digitalsearchgroup.co.uk/wp-content/uploads/2023/09/Logo-1.png.webp"
+          src="/static/dsg-logo-white.png"
           alt="Digital Search Group"
           class="sb-logo-img"
-          onerror="this.style.display='none';this.nextElementSibling.style.display='block'"
         >
-        <div class="sb-logo-fallback">
-          <span style="color:#a07dff">DIGITAL</span> SEARCH
-          <div style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.35);letter-spacing:0.1em;margin-top:1px">CAMPAIGN MANAGER</div>
-        </div>
         <div style="font-size:9.5px;color:rgba(255,255,255,0.28);margin-top:6px;letter-spacing:0.06em;text-transform:uppercase">Campaign Manager</div>
       </div>
 
