@@ -99,7 +99,7 @@ function rankChange(current, previous) {
 function rankBadge(pos) {
   if (!pos) return `<span class="text-gray-400 text-sm">–</span>`;
   if (pos <= 3) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-600 text-white font-bold text-sm">${pos}</span>`;
-  if (pos <= 10) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white font-bold text-sm">${pos}</span>`;
+  if (pos <= 10) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white font-bold text-sm">${pos}</span>`;
   if (pos <= 30) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-500 text-white font-bold text-sm">${pos}</span>`;
   return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-600 font-bold text-sm">${pos}</span>`;
 }
@@ -296,29 +296,26 @@ function renderSidebar() {
   const roleLabel = u?.role === 'project_manager' ? 'Project Manager' : 'Project Executor';
 
   return `
-    <aside class="w-64 bg-gradient-to-b from-blue-950 to-blue-900 flex flex-col flex-shrink-0 overflow-y-auto">
-      <div class="p-5 border-b border-white/10 flex-shrink-0">
+    <aside class="w-64 flex flex-col flex-shrink-0 overflow-y-auto" style="background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)">
+      <div class="p-5 flex-shrink-0" style="border-bottom: 1px solid rgba(255,255,255,0.08)">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center">
-            <i class="fas fa-search text-white text-sm"></i>
-          </div>
+          <div class="dsg-logo-mark">DSG</div>
           <div>
             <div class="text-white font-bold text-sm leading-tight">Digital Search</div>
-            <div class="text-blue-300 text-xs">Campaign Manager</div>
+            <div class="text-xs" style="color: rgba(255,255,255,0.45)">Campaign Manager</div>
           </div>
         </div>
       </div>
       <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
         ${links.map(l => `
-          <button onclick="navigate('${l.id}')" class="flex items-center gap-3 px-4 py-2.5 rounded-xl w-full text-left transition cursor-pointer ${state.page === l.id ? 'text-white bg-white/20' : 'text-blue-200 hover:text-white hover:bg-white/10'}">
+          <button onclick="navigate('${l.id}')" class="flex items-center gap-3 px-4 py-2.5 rounded-xl w-full text-left transition cursor-pointer ${state.page === l.id ? 'text-white' : 'text-slate-300 hover:text-white hover:bg-white/10'}" style="${state.page === l.id ? 'background:rgba(232,93,0,0.25);border-left:3px solid #e85d00;' : ''}">
             <i class="fas ${l.icon} w-4 text-center" style="color:inherit"></i>
             <span class="text-sm" style="color:inherit">${l.label}</span>
           </button>
         `).join('')}
       </nav>
-      <!-- User profile + logout -->
-      <div class="p-3 border-t border-white/10 flex-shrink-0 space-y-2">
-        <div class="flex items-center gap-2 text-xs text-blue-300 px-1">
+      <div class="p-3 flex-shrink-0 space-y-2" style="border-top: 1px solid rgba(255,255,255,0.08)">
+        <div class="flex items-center gap-2 text-xs text-slate-400 px-1">
           <div class="w-2 h-2 rounded-full ${state.dataforseoStatus?.connected ? 'bg-green-400' : 'bg-yellow-400'}"></div>
           DataForSEO: ${state.dataforseoStatus?.connected ? '<span class="text-green-300">Live</span>' : '<span class="text-yellow-300">Demo</span>'}
         </div>
@@ -328,9 +325,9 @@ function renderSidebar() {
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-white text-xs font-semibold truncate">${u?.full_name || 'Team Member'}</div>
-            <div class="text-blue-300 text-xs truncate">${roleLabel}</div>
+            <div class="text-slate-400 text-xs truncate">${roleLabel}</div>
           </div>
-          <button onclick="handleLogout()" class="text-blue-300 hover:text-white transition flex-shrink-0" title="Sign out">
+          <button onclick="handleLogout()" class="text-slate-400 hover:text-white transition flex-shrink-0" title="Sign out">
             <i class="fas fa-sign-out-alt text-sm"></i>
           </button>
         </div>
@@ -371,12 +368,12 @@ function renderTopBar() {
     team: isPM() ? `<button onclick="openModal('new_user_modal')" class="btn-primary"><i class="fas fa-user-plus mr-2"></i>Add Team Member</button>` : '',
   };
   const u = state.currentUser;
-  const roleChip = u ? `<span class="text-xs px-2.5 py-1 rounded-full font-semibold ${u.role === 'project_manager' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${u.role === 'project_manager' ? 'Project Manager' : 'Project Executor'}</span>` : '';
+  const roleChip = u ? `<span class="text-xs px-2.5 py-1 rounded-full font-semibold ${u.role === 'project_manager' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-700'}">${u.role === 'project_manager' ? 'Project Manager' : 'Project Executor'}</span>` : '';
   return `
     <header class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
       <div>
         <h1 class="text-lg font-bold text-gray-900">${titles[state.page] || state.page}</h1>
-        <p class="text-xs text-gray-400">Digital Search Group · ${new Date().toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}</p>
+        <p class="text-xs text-gray-500">Digital Search Group · ${new Date().toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}</p>
       </div>
       <div class="flex items-center gap-3">
         ${roleChip}
@@ -430,10 +427,10 @@ function renderDashboard() {
   const activeClients = d.active_clients || clients.active || 0;
   return `
     <div class="space-y-6">
-      <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
-        <p class="text-blue-200 text-sm font-medium">Total Monthly Recurring Revenue</p>
+      <div class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 text-white">
+        <p class="text-slate-300 text-sm font-medium">Total Monthly Recurring Revenue</p>
         <div class="text-4xl font-bold mt-1">${fmtCurrency(totalMrr)}</div>
-        <div class="flex gap-6 mt-4 text-sm text-blue-200 flex-wrap">
+        <div class="flex gap-6 mt-4 text-sm text-slate-300 flex-wrap">
           <span><strong class="text-white">${activeClients}</strong> Active Clients</span>
           <span><strong class="text-white">${clients.prospects || 0}</strong> Prospects</span>
           <span><strong class="text-white">${campaigns.active || 0}</strong> Active Campaigns</span>
@@ -460,10 +457,10 @@ function renderDashboard() {
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="card">
-          <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-file-contract text-blue-500"></i>Awaiting Approval</h3>
+          <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-file-contract text-orange-500"></i>Awaiting Approval</h3>
           ${!(d.pending_proposals || []).length ? '<p class="text-gray-400 text-sm">No pending proposals</p>' :
             `<div class="space-y-2">${(d.pending_proposals || []).map(p => `
-              <div class="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+              <div class="flex items-center justify-between p-3 bg-orange-50 rounded-xl">
                 <div><p class="font-medium text-sm">${p.company_name}</p><p class="text-xs text-gray-500">${p.title} · ${fmtCurrency(p.monthly_investment)}/mo</p></div>
                 <div class="text-right">${statusBadge('sent')}<p class="text-xs text-gray-400 mt-1">Sent ${ago(p.sent_at)}</p></div>
               </div>`).join('')}</div>`}
@@ -484,8 +481,8 @@ function renderDashboard() {
           <div class="space-y-2">
             ${(d.recent_activity || []).map(a => `
               <div class="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <i class="fas ${activityIcon(a.activity_type)} text-blue-500 text-xs"></i>
+                <div class="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <i class="fas ${activityIcon(a.activity_type)} text-orange-500 text-xs"></i>
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm text-gray-800">${a.description}</p>
@@ -576,18 +573,18 @@ function renderClientCards(clients) {
       ${isArchived ? `<div class="flex items-center gap-2 mb-3 px-3 py-2 bg-slate-100 rounded-lg">
         <i class="fas fa-archive text-slate-400 text-xs"></i>
         <span class="text-xs text-slate-500 font-medium">Archived ${cl.archived_at ? '· ' + cl.archived_at.slice(0,10) : ''}</span>
-        <button onclick="restoreClient(${cl.id})" class="ml-auto text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-undo mr-1"></i>Restore</button>
+        <button onclick="restoreClient(${cl.id})" class="ml-auto text-xs text-orange-600 hover:text-orange-800 font-medium"><i class="fas fa-undo mr-1"></i>Restore</button>
       </div>` : ''}
       <div class="flex items-start justify-between mb-3">
-        <div class="w-10 h-10 rounded-xl ${isArchived ? 'bg-slate-200' : 'bg-blue-100'} flex items-center justify-center font-bold ${isArchived ? 'text-slate-500' : 'text-blue-700'} cursor-pointer" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">
+        <div class="w-10 h-10 rounded-xl ${isArchived ? 'bg-slate-200' : 'bg-orange-100'} flex items-center justify-center font-bold ${isArchived ? 'text-slate-500' : 'text-orange-700'} cursor-pointer" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">
           ${cl.company_name.charAt(0)}
         </div>
         <div class="flex items-center gap-2">
           ${isArchived ? statusBadge('archived') : statusBadge(cl.status)}
-          ${!isArchived ? `<button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' class="text-gray-300 hover:text-blue-500 transition p-1"><i class="fas fa-edit text-xs"></i></button>` : ''}
+          ${!isArchived ? `<button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' class="text-gray-300 hover:text-orange-500 transition p-1"><i class="fas fa-edit text-xs"></i></button>` : ''}
         </div>
       </div>
-      <h3 class="font-semibold ${isArchived ? 'text-slate-600' : 'text-gray-900'} cursor-pointer hover:text-blue-600" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">${cl.company_name}</h3>
+      <h3 class="font-semibold ${isArchived ? 'text-slate-600' : 'text-gray-900'} cursor-pointer hover:text-orange-600" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">${cl.company_name}</h3>
       <p class="text-sm text-gray-500 mt-0.5">${cl.website}</p>
       <p class="text-xs text-gray-400 mt-0.5">${cl.industry || ''} ${cl.location ? '· ' + cl.location : ''}</p>
       <div class="mt-3 pt-3 border-t border-gray-50 flex gap-3 text-xs text-gray-500 flex-wrap items-center">
@@ -626,7 +623,7 @@ function renderClientDetail() {
   return `
     <div class="space-y-6">
       <div class="flex items-center gap-2 text-sm text-gray-500">
-        <button onclick="navigate('clients')" class="hover:text-blue-600"><i class="fas fa-arrow-left mr-1"></i>Clients</button>
+        <button onclick="navigate('clients')" class="hover:text-orange-600"><i class="fas fa-arrow-left mr-1"></i>Clients</button>
         <i class="fas fa-chevron-right text-xs"></i>
         <span class="text-gray-900 font-medium">${cl.company_name}</span>
         ${cl.is_archived ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-600"><i class="fas fa-archive"></i> Archived</span>' : ''}
@@ -670,12 +667,12 @@ function renderClientDetail() {
       <div class="card">
         <div class="flex items-start justify-between flex-wrap gap-4">
           <div class="flex gap-4 items-center">
-            <div class="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-2xl">
+            <div class="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-700 font-bold text-2xl">
               ${cl.company_name.charAt(0)}
             </div>
             <div>
               <h2 class="text-xl font-bold text-gray-900">${cl.company_name}</h2>
-              <a href="https://${cl.website}" target="_blank" class="text-blue-600 text-sm hover:underline">${cl.website}</a>
+              <a href="https://${cl.website}" target="_blank" class="text-orange-600 text-sm hover:underline">${cl.website}</a>
               <div class="flex gap-3 mt-1 text-sm text-gray-500 flex-wrap">
                 ${cl.industry ? `<span>${cl.industry}</span>` : ''}
                 ${cl.location ? `<span>· ${cl.location}</span>` : ''}
@@ -711,7 +708,7 @@ function renderClientDetail() {
           </div>
           <div>
             <p class="text-xs text-gray-400">Monthly Retainer</p>
-            <p class="font-bold text-xl text-blue-600">${fmtCurrencyFor(cl.monthly_budget, cl.country)}</p>
+            <p class="font-bold text-xl text-orange-600">${fmtCurrencyFor(cl.monthly_budget, cl.country)}</p>
             ${cl.contract_start ? `<p class="text-xs text-gray-400">Since ${cl.contract_start}</p>` : ''}
           </div>
           <div>
@@ -742,7 +739,7 @@ function renderClientDetail() {
       <!-- Active Campaigns -->
       <div class="card">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900"><i class="fas fa-rocket text-blue-500 mr-2"></i>Active Campaigns</h3>
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-rocket text-orange-500 mr-2"></i>Active Campaigns</h3>
           <button onclick="openModal('new_campaign_modal')" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>New Campaign</button>
         </div>
         ${!(cl.campaigns || []).length ? '<p class="text-gray-400 text-sm">No campaigns yet</p>' :
@@ -823,7 +820,7 @@ function renderClientForm(cl, isEdit) {
   const v = (field, def = '') => cl ? (cl[field] ?? def) : def;
   return `
     <div class="max-w-4xl space-y-6">
-      <button onclick="${isEdit ? "navigate('client_detail', {selectedClient: state.editingClient})" : "navigate('clients')"}" class="text-sm text-gray-500 hover:text-blue-600">
+      <button onclick="${isEdit ? "navigate('client_detail', {selectedClient: state.editingClient})" : "navigate('clients')"}" class="text-sm text-gray-500 hover:text-orange-600">
         <i class="fas fa-arrow-left mr-1"></i>Back
       </button>
       <div class="card">
@@ -1026,8 +1023,8 @@ function renderCampaigns() {
         <div class="card hover:shadow-md transition cursor-pointer flex items-center justify-between"
           onclick="navigate('campaign_detail', {selectedCampaign: ${JSON.stringify(ca).replace(/"/g,'&quot;')}})">
           <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-              <i class="fas fa-rocket text-blue-600"></i>
+            <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+              <i class="fas fa-rocket text-orange-600"></i>
             </div>
             <div>
               <p class="font-semibold text-gray-900">${ca.name}</p>
@@ -1060,7 +1057,7 @@ function renderCampaignDetail() {
   return `
     <div class="space-y-6">
       <div class="flex items-center gap-2 text-sm text-gray-500">
-        <button onclick="navigate('campaigns')" class="hover:text-blue-600"><i class="fas fa-arrow-left mr-1"></i>Campaigns</button>
+        <button onclick="navigate('campaigns')" class="hover:text-orange-600"><i class="fas fa-arrow-left mr-1"></i>Campaigns</button>
         <i class="fas fa-chevron-right text-xs"></i>
         <span class="text-gray-900 font-medium">${ca.name}</span>
       </div>
@@ -1072,7 +1069,7 @@ function renderCampaignDetail() {
             <p class="text-sm text-gray-500">${ca.company_name || ''} · ${ca.campaign_type?.replace(/_/g,' ')} · Started ${ca.start_date}</p>
           </div>
           <div class="flex gap-2 items-center">
-            <span class="font-bold text-xl text-blue-600">${fmtCurrency(ca.monthly_investment)}<span class="text-sm text-gray-400">/mo</span></span>
+            <span class="font-bold text-xl text-orange-600">${fmtCurrency(ca.monthly_investment)}<span class="text-sm text-gray-400">/mo</span></span>
             ${statusBadge(ca.status)}
           </div>
         </div>
@@ -1091,7 +1088,7 @@ function renderCampaignDetail() {
 
       <div class="card">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900"><i class="fas fa-magnifying-glass-chart text-blue-500 mr-2"></i>Keyword Rankings</h3>
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-magnifying-glass-chart text-orange-500 mr-2"></i>Keyword Rankings</h3>
           <button onclick="openModal('new_keyword_modal')" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>Add Keywords</button>
         </div>
         <div class="overflow-x-auto">
@@ -1143,7 +1140,7 @@ function renderCampaignDetail() {
       <!-- Authority Task Board -->
       <div>
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900 text-lg"><i class="fas fa-tasks text-blue-500 mr-2"></i>Authority Task Board</h3>
+          <h3 class="font-semibold text-gray-900 text-lg"><i class="fas fa-tasks text-orange-500 mr-2"></i>Authority Task Board</h3>
           ${!state.campaignPlanData?.plan ? `<button onclick="openModal('new_plan_modal')" class="btn-primary text-sm"><i class="fas fa-magic mr-2"></i>Create Plan</button>` : ''}
         </div>
         ${renderCampaignTaskBoard()}
@@ -1214,7 +1211,7 @@ const PHASE_NAMES = {
 };
 const PHASE_MONTHS = { 1: [1,2,3], 2: [4,5,6], 3: [7,8,9], 4: [10,11,12] };
 const PHASE_COLORS = {
-  1: { bg: 'bg-blue-50', border: 'border-blue-200', accent: 'text-blue-700', badge: 'bg-blue-600', prog: 'bg-blue-500' },
+  1: { bg: 'bg-orange-50', border: 'border-orange-200', accent: 'text-orange-700', badge: 'bg-orange-600', prog: 'bg-orange-500' },
   2: { bg: 'bg-purple-50', border: 'border-purple-200', accent: 'text-purple-700', badge: 'bg-purple-600', prog: 'bg-purple-500' },
   3: { bg: 'bg-orange-50', border: 'border-orange-200', accent: 'text-orange-700', badge: 'bg-orange-600', prog: 'bg-orange-500' },
   4: { bg: 'bg-green-50', border: 'border-green-200', accent: 'text-green-700', badge: 'bg-green-600', prog: 'bg-green-500' },
@@ -1268,7 +1265,7 @@ function renderCampaignPlans() {
       <!-- Plans table -->
       <div class="card">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900"><i class="fas fa-tasks text-blue-500 mr-2"></i>All Campaign Plans</h3>
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-tasks text-orange-500 mr-2"></i>All Campaign Plans</h3>
           <button onclick="openModal('new_plan_modal')" class="btn-primary text-sm"><i class="fas fa-plus mr-2"></i>Create Plan</button>
         </div>
         ${plans.length === 0 ? `
@@ -1300,12 +1297,12 @@ function renderCampaignPlans() {
                         <div class="text-xs text-gray-400">${p.company_name}</div>
                       </td>
                       <td class="px-3 py-3">
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">${p.tier_client_name}</span>
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">${p.tier_client_name}</span>
                       </td>
                       <td class="px-3 py-3">
                         <div class="flex items-center gap-2">
                           <div class="flex-1 bg-gray-200 rounded-full h-2 min-w-20">
-                            <div class="bg-blue-500 h-2 rounded-full" style="width:${pct}%"></div>
+                            <div class="h-2 rounded-full" style="background:#e85d00;width:${pct}%"></div>
                           </div>
                           <span class="text-xs text-gray-500 whitespace-nowrap">${pct}%</span>
                         </div>
@@ -1364,8 +1361,8 @@ function renderNewPlanModal() {
             <label class="block text-sm font-medium text-gray-700 mb-2">Authority Tier</label>
             <div class="space-y-2">
               ${tiers.map(t => `
-                <label class="flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer hover:border-blue-300 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                  <input type="radio" name="planTier" value="${t.key}" class="accent-blue-600">
+                <label class="flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition hover:border-orange-300 has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
+                  <input type="radio" name="planTier" value="${t.key}" class="accent-orange-600">
                   <div class="flex-1">
                     <div class="font-medium text-sm text-gray-900">${t.label}</div>
                     <div class="text-xs text-gray-400">${t.price} · 12 months · Auto-generated deliverables</div>
@@ -1429,7 +1426,7 @@ function renderTaskEditModal() {
             <textarea id="taskEditNotes" class="input-field" rows="3" placeholder="Notes for this task..."></textarea>
           </div>
           <div class="flex items-center gap-2">
-            <input type="checkbox" id="taskEditClientVisible" class="w-4 h-4 accent-blue-600">
+            <input type="checkbox" id="taskEditClientVisible" class="w-4 h-4 accent-orange-600">
             <label class="text-sm text-gray-700">Show in client report</label>
           </div>
           <div id="taskEditClientLabelRow" class="hidden">
@@ -1477,16 +1474,16 @@ function renderCampaignTaskBoard() {
   return `
     <div class="space-y-6">
       <!-- Plan Header -->
-      <div class="card bg-gradient-to-r from-blue-900 to-blue-700 text-white">
+      <div class="card bg-gradient-to-r from-slate-900 to-slate-700 text-white">
         <div class="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <div class="text-blue-200 text-xs font-medium uppercase tracking-wide mb-1">Campaign Authority Plan</div>
+            <div class="text-slate-300 text-xs font-medium uppercase tracking-wide mb-1">Campaign Authority Plan</div>
             <h3 class="text-xl font-bold">${plan.campaign_name}</h3>
-            <p class="text-blue-200 text-sm">${plan.company_name} · Started ${plan.start_date}</p>
+            <p class="text-slate-300 text-sm">${plan.company_name} · Started ${plan.start_date}</p>
           </div>
           <div class="text-right">
             <div class="text-2xl font-bold">${plan.tier_client_name}</div>
-            <div class="text-blue-200 text-sm">${fmtCurrency(plan.monthly_price)}/month</div>
+            <div class="text-slate-300 text-sm">${fmtCurrency(plan.monthly_price)}/month</div>
             ${isPM() ? `<button onclick="openReschedulePlanModal(${plan.id}, '${plan.start_date}')" class="mt-2 text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-lg transition"><i class="fas fa-calendar-alt mr-1"></i>Reschedule Plan</button>` : ''}
           </div>
         </div>
@@ -1528,7 +1525,7 @@ function renderCampaignTaskBoard() {
           `).join('')}
         </div>
         <div class="flex gap-2 ml-auto">
-          <button onclick="assignAllToMe()" class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition font-medium"><i class="fas fa-user-check mr-1"></i>Assign All to Me</button>
+          <button onclick="assignAllToMe()" class="text-xs px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition font-medium"><i class="fas fa-user-check mr-1"></i>Assign All to Me</button>
           <span class="text-xs text-gray-400 self-center">${tasks.filter(t => t.status === 'completed').length}/${tasks.length} done</span>
         </div>
       </div>
@@ -1597,7 +1594,7 @@ function renderCampaignTaskBoard() {
                               </div>
                               <div class="flex items-center gap-3 mt-1 flex-wrap">
                                 <span class="text-xs text-gray-400 capitalize">${(t.category||'').replace(/_/g,' ')}</span>
-                                ${t.assigned_to ? `<span class="text-xs text-blue-600"><i class="fas fa-user mr-1"></i>${t.assigned_to}</span>` : ''}
+                                ${t.assigned_to ? `<span class="text-xs text-orange-600"><i class="fas fa-user mr-1"></i>${t.assigned_to}</span>` : ''}
                                 ${t.due_date ? `<span class="text-xs ${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'}"><i class="fas fa-calendar mr-1"></i>${t.due_date}${isOverdue ? ' ⚠' : ''}</span>` : ''}
                                 ${t.deliverable_url ? `<a href="${t.deliverable_url}" target="_blank" class="text-xs text-green-600 hover:underline"><i class="fas fa-external-link-alt mr-1"></i>Deliverable</a>` : ''}
                                 ${t.client_visible ? '<span class="text-xs text-purple-500"><i class="fas fa-eye mr-1"></i>Client visible</span>' : ''}
@@ -1781,7 +1778,7 @@ function openReschedulePlanModal(planId, currentStartDate) {
       <div id="reschedule_plan_modal" class="modal-overlay hidden">
         <div class="modal-box p-6 max-w-md">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-gray-900"><i class="fas fa-calendar-alt mr-2 text-blue-600"></i>Reschedule Campaign Plan</h3>
+            <h3 class="text-lg font-bold text-gray-900"><i class="fas fa-calendar-alt mr-2 text-orange-600"></i>Reschedule Campaign Plan</h3>
             <button onclick="closeModal('reschedule_plan_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
           </div>
           <p class="text-sm text-gray-500 mb-4">Changing the start date will recalculate all task due dates proportionally across all 12 months.</p>
@@ -1845,7 +1842,7 @@ function renderProposals() {
         </select>
       </div>
       <div class="space-y-3">
-        ${(state.proposals || []).length === 0 ? '<div class="card text-center py-12 text-gray-400">No proposals yet. <button onclick="navigate(\'new_proposal\')" class="text-blue-600 hover:underline ml-1">Create one</button></div>' :
+        ${(state.proposals || []).length === 0 ? '<div class="card text-center py-12 text-gray-400">No proposals yet. <button onclick="navigate(\'new_proposal\')" class="text-orange-600 hover:underline ml-1">Create one</button></div>' :
           (state.proposals || []).map(p => `
             <div class="card">
               <div class="flex items-start justify-between flex-wrap gap-4">
@@ -1863,7 +1860,7 @@ function renderProposals() {
                   </p>
                 </div>
                 <div class="text-right flex flex-col items-end gap-2">
-                  <span class="text-xl font-bold text-blue-600">${fmtCurrency(p.monthly_investment)}/mo</span>
+                  <span class="text-xl font-bold text-orange-600">${fmtCurrency(p.monthly_investment)}/mo</span>
                   <p class="text-xs text-gray-400">${p.contract_length} month contract</p>
                   ${p.setup_fee > 0 ? `<p class="text-xs text-gray-500">+ ${fmtCurrency(p.setup_fee)} setup fee</p>` : ''}
                   <div class="flex gap-2 flex-wrap justify-end">
@@ -1903,7 +1900,7 @@ function renderNewProposal() {
   ];
   return `
     <div class="max-w-4xl space-y-6">
-      <button onclick="navigate('proposals')" class="text-sm text-gray-500 hover:text-blue-600">
+      <button onclick="navigate('proposals')" class="text-sm text-gray-500 hover:text-orange-600">
         <i class="fas fa-arrow-left mr-1"></i>Back to Proposals
       </button>
 
@@ -1913,7 +1910,7 @@ function renderNewProposal() {
 
         <!-- Authority Tier Selector -->
         <div class="mb-5">
-          <label class="block text-sm font-medium text-gray-700 mb-3"><i class="fas fa-layer-group text-blue-500 mr-1"></i>Select Authority Tier</label>
+          <label class="block text-sm font-medium text-gray-700 mb-3"><i class="fas fa-layer-group text-orange-500 mr-1"></i>Select Authority Tier</label>
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
             ${[
               { key: 'basic', name: 'AI Authority Foundation', price: 1497, color: 'blue', icon: 'fa-seedling', desc: 'Core authority placement layer with foundational media trust signals.' },
@@ -2071,7 +2068,7 @@ function renderPayments() {
         <!-- Upcoming Billing -->
         <div class="card">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold text-gray-900"><i class="fas fa-calendar-alt text-blue-500 mr-2"></i>Upcoming Billing</h3>
+            <h3 class="font-semibold text-gray-900"><i class="fas fa-calendar-alt text-orange-500 mr-2"></i>Upcoming Billing</h3>
             <button onclick="processBilling()" class="btn-secondary text-xs"><i class="fas fa-cogs mr-1"></i>Process Due Now</button>
           </div>
           ${!(d.upcoming_billing||[]).length ? '<p class="text-gray-400 text-sm">No upcoming billing</p>' :
@@ -2161,13 +2158,13 @@ function renderWordPress() {
           <div class="card hover:shadow-md transition cursor-pointer" onclick="navigate('wordpress_detail', {selectedWpProject: ${JSON.stringify(wp).replace(/"/g,'&quot;')}})">
             <div class="flex items-start justify-between">
               <div class="flex gap-4 items-start">
-                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <i class="fab fa-wordpress text-blue-600 text-lg"></i>
+                <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+                  <i class="fab fa-wordpress text-orange-600 text-lg"></i>
                 </div>
                 <div>
                   <h3 class="font-semibold text-gray-900">${wp.project_name}</h3>
                   <p class="text-sm text-gray-500">${wp.company_name} · ${wp.project_type?.replace(/_/g,' ')}</p>
-                  ${wp.site_url ? `<p class="text-xs text-blue-500 mt-0.5">${wp.site_url}</p>` : ''}
+                  ${wp.site_url ? `<p class="text-xs text-orange-500 mt-0.5">${wp.site_url}</p>` : ''}
                   <div class="flex gap-4 mt-2 text-xs text-gray-400">
                     ${wp.theme_used ? `<span><i class="fas fa-palette mr-1"></i>${wp.theme_used}</span>` : ''}
                     ${wp.page_builder ? `<span><i class="fas fa-th-large mr-1"></i>${wp.page_builder}</span>` : ''}
@@ -2200,7 +2197,7 @@ function renderWpProjectDetail() {
   return `
     <div class="space-y-6">
       <div class="flex items-center gap-2 text-sm text-gray-500">
-        <button onclick="navigate('wordpress')" class="hover:text-blue-600"><i class="fas fa-arrow-left mr-1"></i>WordPress Projects</button>
+        <button onclick="navigate('wordpress')" class="hover:text-orange-600"><i class="fas fa-arrow-left mr-1"></i>WordPress Projects</button>
         <i class="fas fa-chevron-right text-xs"></i>
         <span class="text-gray-900 font-medium">${wp.project_name}</span>
       </div>
@@ -2210,11 +2207,11 @@ function renderWpProjectDetail() {
           <div>
             <h2 class="text-xl font-bold text-gray-900">${wp.project_name}</h2>
             <p class="text-sm text-gray-500">${wp.company_name} · ${wp.project_type?.replace(/_/g,' ')}</p>
-            ${wp.site_url ? `<a href="${wp.site_url}" target="_blank" class="text-blue-600 text-sm hover:underline">${wp.site_url}</a>` : ''}
+            ${wp.site_url ? `<a href="${wp.site_url}" target="_blank" class="text-orange-600 text-sm hover:underline">${wp.site_url}</a>` : ''}
           </div>
           <div class="flex gap-2 items-center flex-wrap">
             ${statusBadge(wp.status)}
-            ${wp.project_budget ? `<span class="font-bold text-xl text-blue-600">${fmtCurrency(wp.project_budget)}</span>` : ''}
+            ${wp.project_budget ? `<span class="font-bold text-xl text-orange-600">${fmtCurrency(wp.project_budget)}</span>` : ''}
           </div>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">
@@ -2228,12 +2225,12 @@ function renderWpProjectDetail() {
       <!-- Implementation Blocks Progress -->
       <div class="card">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900"><i class="fas fa-puzzle-piece text-blue-500 mr-2"></i>Implementation Blocks (${completed}/${blocks.length})</h3>
+          <h3 class="font-semibold text-gray-900"><i class="fas fa-puzzle-piece text-orange-500 mr-2"></i>Implementation Blocks (${completed}/${blocks.length})</h3>
           <button onclick="openModal('new_wp_block_modal')" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i>Add Block</button>
         </div>
         <!-- Progress bar -->
         <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
-          <div class="bg-blue-600 h-2 rounded-full transition-all" style="width: ${blocks.length ? Math.round(completed/blocks.length*100) : 0}%"></div>
+          <div class="h-2 rounded-full transition-all" style="background:#e85d00;width: ${blocks.length ? Math.round(completed/blocks.length*100) : 0}%"></div>
         </div>
         <p class="text-xs text-gray-500 mb-4">${completed} of ${blocks.length} blocks completed · ${total_hours}h estimated total</p>
 
@@ -2388,9 +2385,9 @@ function renderSocial() {
     <div class="space-y-6">
       <!-- Platform filter tabs -->
       <div class="flex gap-2 flex-wrap">
-        <button onclick="filterSocial('')" class="px-4 py-2 rounded-xl text-sm font-medium ${!state.socialFilter ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">All</button>
+        <button onclick="filterSocial('')" class="px-4 py-2 rounded-xl text-sm font-medium ${!state.socialFilter ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">All</button>
         ${platforms.map(p => `
-          <button onclick="filterSocial('${p}')" class="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${state.socialFilter === p ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">
+          <button onclick="filterSocial('${p}')" class="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${state.socialFilter === p ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">
             <i class="fab ${platformIcons[p] || 'fa-share'}"></i>${p.replace(/_/g,' ')}
           </button>
         `).join('')}
@@ -2400,20 +2397,20 @@ function renderSocial() {
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         ${(state.socialPosts||[]).length === 0 ? `
           <div class="col-span-3 card text-center py-12 text-gray-400">
-            No social posts yet. <button onclick="openModal('new_social_modal')" class="text-blue-600 hover:underline ml-1">Create one</button>
+            No social posts yet. <button onclick="openModal('new_social_modal')" class="text-orange-600 hover:underline ml-1">Create one</button>
           </div>` :
           (state.socialPosts||[]).map(post => `
             <div class="card">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
-                  <i class="fab ${platformIcons[post.platform] || 'fa-share'} text-blue-500"></i>
+                  <i class="fab ${platformIcons[post.platform] || 'fa-share'} text-orange-500"></i>
                   <span class="text-sm font-medium text-gray-700">${post.platform?.replace(/_/g,' ')}</span>
                   ${statusBadge(post.status)}
                 </div>
                 <span class="text-xs text-gray-400">${post.scheduled_at ? post.scheduled_at.slice(0,10) : post.created_at?.slice(0,10)}</span>
               </div>
               <p class="text-sm text-gray-700 mb-2 line-clamp-3">${post.caption || '(No caption)'}</p>
-              ${post.hashtags ? `<p class="text-xs text-blue-500 mb-2 line-clamp-1">${post.hashtags}</p>` : ''}
+              ${post.hashtags ? `<p class="text-xs text-orange-500 mb-2 line-clamp-1">${post.hashtags}</p>` : ''}
               <p class="text-xs text-gray-400">${post.company_name}</p>
               ${post.status === 'published' ? `
                 <div class="flex gap-4 mt-2 text-xs text-gray-500 pt-2 border-t">
@@ -2519,7 +2516,7 @@ function renderNewPressRelease() {
   const cl = state.selectedClient;
   return `
     <div class="max-w-4xl space-y-6">
-      <button onclick="navigate('press')" class="text-sm text-gray-500 hover:text-blue-600">
+      <button onclick="navigate('press')" class="text-sm text-gray-500 hover:text-orange-600">
         <i class="fas fa-arrow-left mr-1"></i>Back to Press Releases
       </button>
       <div class="card">
@@ -2721,7 +2718,7 @@ function renderLLM() {
 
       ${recent_mentions.length > 0 ? `
         <div class="card">
-          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-history text-blue-500 mr-2"></i>Recent LLM Mention History</h3>
+          <h3 class="font-semibold text-gray-900 mb-4"><i class="fas fa-history text-orange-500 mr-2"></i>Recent LLM Mention History</h3>
           <div class="space-y-3">
             ${recent_mentions.map(m => `
               <div class="p-3 border border-gray-100 rounded-xl">
@@ -2839,7 +2836,7 @@ function renderContent() {
                       ${statusBadge(ci.status)}
                     </div>
                     <p class="text-xs text-gray-500 mt-0.5">${ci.company_name} · ${ci.campaign_name} · ${ci.content_type?.replace(/_/g,' ')}</p>
-                    ${ci.target_keyword ? `<p class="text-xs text-blue-500 mt-0.5"><i class="fas fa-key mr-1"></i>${ci.target_keyword}</p>` : ''}
+                    ${ci.target_keyword ? `<p class="text-xs text-orange-500 mt-0.5"><i class="fas fa-key mr-1"></i>${ci.target_keyword}</p>` : ''}
                   </div>
                 </div>
                 <div class="flex items-center gap-3 ml-3 flex-shrink-0">
@@ -2977,7 +2974,7 @@ function renderReports() {
       </div>
 
       <!-- Report Format Guide -->
-      <div class="card border-l-4 border-blue-500">
+      <div class="card border-l-4 border-orange-500">
         <h3 class="font-semibold text-gray-900 mb-3"><i class="fas fa-info-circle text-blue-500 mr-2"></i>Authority Report Format</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
           ${[
@@ -2988,7 +2985,7 @@ function renderReports() {
           ].map(s => `
             <div class="flex gap-3">
               <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                <i class="fas ${s.icon} text-blue-600 text-xs"></i>
+                <i class="fas ${s.icon} text-orange-600 text-xs"></i>
               </div>
               <div>
                 <div class="font-medium text-gray-800 text-xs mb-0.5">${s.title}</div>
@@ -3012,15 +3009,15 @@ function renderReports() {
             <div class="card">
               <div class="flex items-start justify-between flex-wrap gap-4">
                 <div class="flex gap-4">
-                  <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-chart-line text-blue-600"></i>
+                  <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-chart-line text-orange-600"></i>
                   </div>
                   <div>
                     <h3 class="font-semibold text-gray-900">${r.company_name} — ${r.report_period}</h3>
                     <p class="text-sm text-gray-500">${r.campaign_name} · ${r.report_type} report</p>
                     <div class="flex gap-4 mt-2 text-xs flex-wrap">
                       <span class="text-green-600"><i class="fas fa-arrow-up mr-1"></i>${r.keywords_improved} keywords improved</span>
-                      <span class="text-blue-600"><i class="fas fa-star mr-1"></i>${r.top10_keywords} in top 10</span>
+                      <span class="text-orange-600"><i class="fas fa-star mr-1"></i>${r.top10_keywords} in top 10</span>
                       <span class="text-purple-600"><i class="fas fa-trophy mr-1"></i>${r.top3_keywords || 0} in top 3</span>
                       <span class="text-gray-500"><i class="fas fa-pen-nib mr-1"></i>${r.content_published} published</span>
                     </div>
@@ -4136,7 +4133,7 @@ async function runSerpAnalysis() {
           <div class="flex items-center gap-2">
             <span class="w-5 h-5 rounded bg-gray-100 text-gray-600 flex items-center justify-center font-bold flex-shrink-0">${r.position}</span>
             <div class="flex-1 min-w-0">
-              <p class="font-medium text-blue-600 truncate">${r.title}</p>
+              <p class="font-medium text-orange-600 truncate">${r.title}</p>
               <p class="text-gray-400 truncate">${r.url}</p>
             </div>
           </div>
@@ -4185,7 +4182,7 @@ async function runBacklinkCheck() {
     const d = res.data;
     document.getElementById('backlinkResults').innerHTML = `
       <div class="grid grid-cols-2 gap-2 text-sm">
-        <div class="p-3 bg-blue-50 rounded-xl text-center"><div class="text-xl font-bold text-blue-700">${d.backlinks_count?.toLocaleString() || '-'}</div><div class="text-xs text-gray-500">Backlinks</div></div>
+        <div class="p-3 bg-orange-50 rounded-xl text-center"><div class="text-xl font-bold text-blue-700">${d.backlinks_count?.toLocaleString() || '-'}</div><div class="text-xs text-gray-500">Backlinks</div></div>
         <div class="p-3 bg-green-50 rounded-xl text-center"><div class="text-xl font-bold text-green-700">${d.referring_domains?.toLocaleString() || '-'}</div><div class="text-xs text-gray-500">Ref. Domains</div></div>
         <div class="p-3 bg-purple-50 rounded-xl text-center"><div class="text-xl font-bold text-purple-700">${d.domain_rank || '-'}</div><div class="text-xs text-gray-500">Domain Rank</div></div>
         <div class="p-3 bg-yellow-50 rounded-xl text-center"><div class="text-xl font-bold text-yellow-700">${d.spam_score || '0'}</div><div class="text-xs text-gray-500">Spam Score</div></div>
@@ -4284,7 +4281,7 @@ function renderOnboarding() {
       <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
           <h3 class="font-semibold text-gray-800">All Onboarding Forms</h3>
-          <button onclick="processReminders()" class="text-xs text-blue-600 hover:underline"><i class="fas fa-sync-alt mr-1"></i>Process Due Reminders</button>
+          <button onclick="processReminders()" class="text-xs text-orange-600 hover:underline"><i class="fas fa-sync-alt mr-1"></i>Process Due Reminders</button>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -4312,7 +4309,7 @@ function renderOnboarding() {
                   <td class="px-5 py-4">${o.submitted_at ? `<span class="text-green-600"><i class="fas fa-check mr-1"></i>${ago(o.submitted_at)}</span>` : '<span class="text-gray-400">–</span>'}</td>
                   <td class="px-5 py-4">
                     <div class="flex gap-2">
-                      <button onclick="event.stopPropagation(); sendOnboardingReminder(${o.id})" class="text-xs bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg hover:bg-blue-100" title="Send/Resend form link"><i class="fas fa-paper-plane"></i></button>
+                      <button onclick="event.stopPropagation(); sendOnboardingReminder(${o.id})" class="text-xs bg-orange-50 text-orange-600 px-2.5 py-1.5 rounded-lg hover:bg-orange-100" title="Send/Resend form link"><i class="fas fa-paper-plane"></i></button>
                       ${o.status === 'submitted' ? `<button onclick="event.stopPropagation(); approveOnboarding(${o.id})" class="text-xs bg-green-50 text-green-600 px-2.5 py-1.5 rounded-lg hover:bg-green-100" title="Approve onboarding"><i class="fas fa-check"></i></button>` : ''}
                       <button onclick="event.stopPropagation(); copyOnboardingLink(${o.id}, '${o.onboarding_token}')" class="text-xs bg-gray-50 text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-100" title="Copy form link"><i class="fas fa-copy"></i></button>
                     </div>
@@ -4348,7 +4345,7 @@ function renderOnboarding() {
         </div>
         <div class="flex gap-3 mt-6">
           <button onclick="closeModal('new_onboarding_modal')" class="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">Cancel</button>
-          <button onclick="createOnboarding()" class="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700">Create & Send</button>
+          <button onclick="createOnboarding()" class="flex-1 text-white py-2.5 rounded-xl text-sm font-bold" style="background:#e85d00">Create & Send</button>
         </div>
       </div>
     </div>
@@ -4384,10 +4381,10 @@ function renderOnboardingDetail() {
         <div class="mt-6">
           <div class="flex justify-between text-sm mb-2">
             <span class="text-gray-600 font-medium">Overall Completion</span>
-            <span class="font-bold text-blue-600">${comp.overall || 0}%</span>
+            <span class="font-bold" style="color:#e85d00">${comp.overall || 0}%</span>
           </div>
           <div class="w-full bg-gray-100 rounded-full h-3">
-            <div class="bg-blue-600 h-3 rounded-full transition-all" style="width:${comp.overall || 0}%"></div>
+            <div class="h-3 rounded-full transition-all" style="background:#e85d00;width:${comp.overall || 0}%"></div>
           </div>
         </div>
 
@@ -4581,7 +4578,7 @@ function renderTeam() {
           <div class="text-sm text-gray-500 mt-1">Total Team Members</div>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm text-center">
-          <div class="text-3xl font-bold text-blue-600">${users.filter(u=>u.role==='project_manager'&&u.is_active).length}</div>
+          <div class="text-3xl font-bold" style="color:#e85d00">${users.filter(u=>u.role==='project_manager'&&u.is_active).length}</div>
           <div class="text-sm text-gray-500 mt-1">Project Managers</div>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-sm text-center">
@@ -4594,7 +4591,7 @@ function renderTeam() {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
           <div class="flex items-center gap-2 mb-3">
-            <i class="fas fa-user-tie text-blue-600"></i>
+            <i class="fas fa-user-tie text-orange-600"></i>
             <span class="font-bold text-blue-800">Project Manager</span>
           </div>
           <ul class="text-sm text-blue-700 space-y-1.5">
@@ -4663,7 +4660,7 @@ function renderTeam() {
                 <td class="px-5 py-4">
                   ${u.email !== (state.currentUser?.email) ? `
                     <div class="flex gap-2">
-                      <button onclick="openEditUserModal(${JSON.stringify(u).replace(/"/g,'&quot;')})" class="text-xs bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg hover:bg-blue-100" title="Edit">
+                      <button onclick="openEditUserModal(${JSON.stringify(u).replace(/"/g,'&quot;')})" class="text-xs bg-orange-50 text-orange-600 px-2.5 py-1.5 rounded-lg hover:bg-orange-100" title="Edit">
                         <i class="fas fa-edit"></i>
                       </button>
                       <button onclick="toggleUserActive(${u.id}, ${u.is_active})" class="text-xs ${u.is_active ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'} px-2.5 py-1.5 rounded-lg" title="${u.is_active ? 'Deactivate' : 'Reactivate'}">
@@ -4710,7 +4707,7 @@ function renderChangePwModal() {
         </div>
         <div class="flex gap-3 mt-6">
           <button onclick="closeModal('change_pw_modal')" class="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">Cancel</button>
-          <button onclick="submitChangePw()" class="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700">Update Password</button>
+          <button onclick="submitChangePw()" class="flex-1 text-white py-2.5 rounded-xl text-sm font-bold" style="background:#e85d00">Update Password</button>
         </div>
       </div>
     </div>`;
@@ -4760,7 +4757,7 @@ function renderNewUserModal() {
         </div>
         <div class="flex gap-3 mt-6">
           <button onclick="closeModal('new_user_modal')" class="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">Cancel</button>
-          <button onclick="saveUser()" class="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700" id="saveUserBtn">Add Member</button>
+          <button onclick="saveUser()" class="flex-1 text-white py-2.5 rounded-xl text-sm font-bold" id="saveUserBtn" style="background:#e85d00">Add Member</button>
         </div>
       </div>
     </div>`;
