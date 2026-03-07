@@ -115,7 +115,126 @@ function ago(dateStr) {
 }
 
 function fmt(n) { return Number(n || 0).toLocaleString(); }
-function fmtCurrency(n) { return '$' + Number(n || 0).toLocaleString('en-AU', {minimumFractionDigits: 0, maximumFractionDigits: 0}); }
+
+// ── Currency helpers ──────────────────────────────────────────
+// Currency rules: AUS = AUD, UK = GBP, US = USD, default = USD
+const CURRENCY_MAP = {
+  'Australia': { code: 'AUD', symbol: 'A$', locale: 'en-AU', rate: 1.42 },
+  'United Kingdom': { code: 'GBP', symbol: '£', locale: 'en-GB', rate: 0.70 },
+  'United States': { code: 'USD', symbol: '$', locale: 'en-US', rate: 1.00 },
+};
+const DEFAULT_CURRENCY = { code: 'USD', symbol: '$', locale: 'en-US', rate: 1.00 };
+
+function getCurrencyForCountry(country) {
+  if (!country) return DEFAULT_CURRENCY;
+  // Exact match first
+  if (CURRENCY_MAP[country]) return CURRENCY_MAP[country];
+  // Partial match
+  const key = Object.keys(CURRENCY_MAP).find(k => country.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(country.toLowerCase()));
+  return key ? CURRENCY_MAP[key] : DEFAULT_CURRENCY;
+}
+
+// Format a USD amount into the client's local currency
+function fmtCurrencyFor(n, country) {
+  const cur = getCurrencyForCountry(country);
+  const localAmount = Math.round(Number(n || 0) * cur.rate);
+  return cur.symbol + localAmount.toLocaleString(cur.locale, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+}
+
+// Default fmtCurrency uses USD (fallback)
+function fmtCurrency(n) { return '$' + Number(n || 0).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0}); }
+
+// ── Country / State / Timezone lists ─────────────────────────
+const COUNTRY_LIST = [
+  'Australia','United States','United Kingdom','Canada','New Zealand',
+  'Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda',
+  'Argentina','Armenia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh',
+  'Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia',
+  'Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso',
+  'Burundi','Cabo Verde','Cambodia','Cameroon','Central African Republic','Chad',
+  'Chile','China','Colombia','Comoros','Congo','Costa Rica','Croatia','Cuba',
+  'Cyprus','Czech Republic','Denmark','Djibouti','Dominica','Dominican Republic',
+  'Ecuador','Egypt','El Salvador','Equatorial Guinea','Eritrea','Estonia',
+  'Eswatini','Ethiopia','Fiji','Finland','France','Gabon','Gambia','Georgia',
+  'Germany','Ghana','Greece','Grenada','Guatemala','Guinea','Guinea-Bissau',
+  'Guyana','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran',
+  'Iraq','Ireland','Israel','Italy','Jamaica','Japan','Jordan','Kazakhstan',
+  'Kenya','Kiribati','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lesotho',
+  'Liberia','Libya','Liechtenstein','Lithuania','Luxembourg','Madagascar','Malawi',
+  'Malaysia','Maldives','Mali','Malta','Marshall Islands','Mauritania','Mauritius',
+  'Mexico','Micronesia','Moldova','Monaco','Mongolia','Montenegro','Morocco',
+  'Mozambique','Myanmar','Namibia','Nauru','Nepal','Netherlands','Nicaragua',
+  'Niger','Nigeria','North Korea','North Macedonia','Norway','Oman','Pakistan',
+  'Palau','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Poland',
+  'Portugal','Qatar','Romania','Russia','Rwanda','Saint Kitts and Nevis',
+  'Saint Lucia','Saint Vincent and the Grenadines','Samoa','San Marino',
+  'Sao Tome and Principe','Saudi Arabia','Senegal','Serbia','Seychelles',
+  'Sierra Leone','Singapore','Slovakia','Slovenia','Solomon Islands','Somalia',
+  'South Africa','South Korea','South Sudan','Spain','Sri Lanka','Sudan',
+  'Suriname','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania',
+  'Thailand','Timor-Leste','Togo','Tonga','Trinidad and Tobago','Tunisia',
+  'Turkey','Turkmenistan','Tuvalu','Uganda','Ukraine','United Arab Emirates',
+  'Uruguay','Uzbekistan','Vanuatu','Vatican City','Venezuela','Vietnam',
+  'Yemen','Zambia','Zimbabwe'
+];
+
+const STATES_BY_COUNTRY = {
+  'Australia': ['ACT','NSW','NT','QLD','SA','TAS','VIC','WA'],
+  'United States': ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'],
+  'United Kingdom': ['England','Scotland','Wales','Northern Ireland'],
+  'Canada': ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'],
+  'New Zealand': ['Auckland','Bay of Plenty','Canterbury','Gisborne','Hawke\'s Bay','Manawatu-Whanganui','Marlborough','Nelson','Northland','Otago','Southland','Taranaki','Tasman','Waikato','Wellington','West Coast'],
+};
+
+const TIMEZONE_LIST = [
+  // Americas
+  'America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+  'America/Anchorage','Pacific/Honolulu','America/Toronto','America/Vancouver',
+  'America/Mexico_City','America/Sao_Paulo','America/Argentina/Buenos_Aires',
+  'America/Bogota','America/Lima','America/Santiago','America/Caracas',
+  // Europe
+  'Europe/London','Europe/Dublin','Europe/Paris','Europe/Berlin','Europe/Rome',
+  'Europe/Madrid','Europe/Amsterdam','Europe/Brussels','Europe/Zurich',
+  'Europe/Stockholm','Europe/Oslo','Europe/Copenhagen','Europe/Helsinki',
+  'Europe/Warsaw','Europe/Prague','Europe/Budapest','Europe/Bucharest',
+  'Europe/Athens','Europe/Istanbul','Europe/Moscow','Europe/Kiev',
+  // Asia-Pacific
+  'Asia/Dubai','Asia/Riyadh','Asia/Kolkata','Asia/Dhaka','Asia/Bangkok',
+  'Asia/Jakarta','Asia/Singapore','Asia/Shanghai','Asia/Tokyo','Asia/Seoul',
+  'Asia/Hong_Kong','Asia/Manila','Asia/Taipei','Asia/Karachi',
+  // Oceania
+  'Australia/Sydney','Australia/Melbourne','Australia/Brisbane','Australia/Perth',
+  'Australia/Adelaide','Australia/Hobart','Pacific/Auckland','Pacific/Auckland',
+  'Pacific/Auckland','Pacific/Fiji',
+  // Africa
+  'Africa/Cairo','Africa/Johannesburg','Africa/Lagos','Africa/Nairobi',
+];
+
+function renderStateField(country, currentState) {
+  const states = STATES_BY_COUNTRY[country];
+  if (states) {
+    return `<select id="cl_state" class="input-field">
+      <option value="">Select...</option>
+      ${states.map(s => `<option value="${s}" ${currentState === s ? 'selected' : ''}>${s}</option>`).join('')}
+    </select>`;
+  }
+  return `<input type="text" id="cl_state_input" class="input-field" value="${currentState || ''}" placeholder="State / Province / Region">`;
+}
+
+function onCountryChange(country) {
+  const container = document.getElementById('cl_state_container');
+  if (container) container.innerHTML = renderStateField(country, '');
+  // Auto-set timezone based on country
+  const tzEl = document.getElementById('cl_timezone');
+  if (tzEl) {
+    const defaultTz = {
+      'Australia': 'Australia/Sydney', 'United States': 'America/New_York',
+      'United Kingdom': 'Europe/London', 'Canada': 'America/Toronto',
+      'New Zealand': 'Pacific/Auckland'
+    }[country];
+    if (defaultTz) tzEl.value = defaultTz;
+  }
+}
 
 function loading() {
   return `<div class="flex items-center justify-center h-64"><div class="text-center text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><p class="text-sm">Loading...</p></div></div>`;
@@ -306,13 +425,15 @@ function renderDashboard() {
   const d = state.dashboardData;
   if (!d) { loadDashboard(); return loading(); }
   const { clients = {}, campaigns = {}, keywords = {}, content = {}, proposals = {} } = d;
+  const totalMrr = d.total_mrr || clients.total_mrr_clients || clients.total_mrr || 0;
+  const activeClients = d.active_clients || clients.active || 0;
   return `
     <div class="space-y-6">
       <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
         <p class="text-blue-200 text-sm font-medium">Total Monthly Recurring Revenue</p>
-        <div class="text-4xl font-bold mt-1">${fmtCurrency(clients.total_mrr)}</div>
+        <div class="text-4xl font-bold mt-1">${fmtCurrency(totalMrr)}</div>
         <div class="flex gap-6 mt-4 text-sm text-blue-200 flex-wrap">
-          <span><strong class="text-white">${clients.active || 0}</strong> Active Clients</span>
+          <span><strong class="text-white">${activeClients}</strong> Active Clients</span>
           <span><strong class="text-white">${clients.prospects || 0}</strong> Prospects</span>
           <span><strong class="text-white">${campaigns.active || 0}</strong> Active Campaigns</span>
         </div>
@@ -453,7 +574,7 @@ function renderClientCards(clients) {
       <div class="mt-3 pt-3 border-t border-gray-50 flex gap-3 text-xs text-gray-500 flex-wrap items-center">
         <span><i class="fas fa-rocket mr-1"></i>${cl.campaign_count || 0} campaigns</span>
         <span><i class="fas fa-key mr-1"></i>${cl.keyword_count || 0} keywords</span>
-        ${cl.monthly_budget ? `<span class="ml-auto font-semibold text-gray-700">${fmtCurrency(cl.monthly_budget)}/mo</span>` : ''}
+        ${cl.monthly_budget ? `<span class="ml-auto font-semibold text-gray-700">${fmtCurrencyFor(cl.monthly_budget, cl.country)}/mo</span>` : ''}
       </div>
       <div class="mt-2 flex items-center gap-1.5 text-xs ${obColors[obStatus] || 'text-gray-400'}">
         <i class="fas ${obIcons[obStatus] || 'fa-clipboard'} text-xs"></i>
@@ -538,7 +659,7 @@ function renderClientDetail() {
           </div>
           <div>
             <p class="text-xs text-gray-400">Monthly Retainer</p>
-            <p class="font-bold text-xl text-blue-600">${fmtCurrency(cl.monthly_budget)}</p>
+            <p class="font-bold text-xl text-blue-600">${fmtCurrencyFor(cl.monthly_budget, cl.country)}</p>
             ${cl.contract_start ? `<p class="text-xs text-gray-400">Since ${cl.contract_start}</p>` : ''}
           </div>
           <div>
@@ -698,18 +819,18 @@ function renderClientForm(cl, isEdit) {
               <input type="text" id="cl_city" class="input-field" value="${v('city')}" placeholder="Sydney">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
-              <select id="cl_state" class="input-field">
-                ${['NSW','VIC','QLD','WA','SA','TAS','ACT','NT'].map(s => `<option value="${s}" ${v('state') === s ? 'selected' : ''}>${s}</option>`).join('')}
+              <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+              <select id="cl_country" class="input-field" onchange="onCountryChange(this.value)">
+                ${COUNTRY_LIST.map(c => `<option value="${c}" ${v('country','United States') === c ? 'selected' : ''}>${c}</option>`).join('')}
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
-              <input type="text" id="cl_postcode" class="input-field" value="${v('postcode')}" placeholder="2000">
+              <label class="block text-sm font-medium text-gray-700 mb-1">State / Region</label>
+              <div id="cl_state_container">${renderStateField(v('country','United States'), v('state'))}</div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
-              <input type="text" id="cl_country" class="input-field" value="${v('country','Australia')}">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Postcode / ZIP</label>
+              <input type="text" id="cl_postcode" class="input-field" value="${v('postcode')}" placeholder="e.g. 2000">
             </div>
             <div class="col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Location (Display)</label>
@@ -772,7 +893,7 @@ function renderClientForm(cl, isEdit) {
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
               <select id="cl_timezone" class="input-field">
-                ${['Australia/Sydney','Australia/Melbourne','Australia/Brisbane','Australia/Perth','Australia/Adelaide','Australia/Hobart'].map(tz => `<option value="${tz}" ${v('timezone','Australia/Sydney') === tz ? 'selected' : ''}>${tz}</option>`).join('')}
+                ${TIMEZONE_LIST.map(tz => `<option value="${tz}" ${v('timezone','America/New_York') === tz ? 'selected' : ''}>${tz}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -1145,7 +1266,10 @@ function renderCampaignPlans() {
                       </td>
                       <td class="px-3 py-3 text-xs text-gray-400">${p.start_date}</td>
                       <td class="px-3 py-3">
-                        <button onclick="openPlanTaskBoard(${p.campaign_id})" class="btn-secondary text-xs"><i class="fas fa-th-list mr-1"></i>Task Board</button>
+                        <div class="flex gap-1.5">
+                          <button onclick="openPlanTaskBoard(${p.campaign_id})" class="btn-secondary text-xs"><i class="fas fa-th-list mr-1"></i>Task Board</button>
+                          ${isPM() ? `<button onclick="deletePlan(${p.id})" class="text-xs px-2 py-1 rounded-lg text-red-500 hover:bg-red-50 transition" title="Delete plan"><i class="fas fa-trash"></i></button>` : ''}
+                        </div>
                       </td>
                     </tr>
                   `;
@@ -1311,6 +1435,7 @@ function renderCampaignTaskBoard() {
           <div class="text-right">
             <div class="text-2xl font-bold">${plan.tier_client_name}</div>
             <div class="text-blue-200 text-sm">${fmtCurrency(plan.monthly_price)}/month</div>
+            ${isPM() ? `<button onclick="openReschedulePlanModal(${plan.id}, '${plan.start_date}')" class="mt-2 text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-lg transition"><i class="fas fa-calendar-alt mr-1"></i>Reschedule Plan</button>` : ''}
           </div>
         </div>
         <!-- Phase progress overview -->
@@ -1350,8 +1475,9 @@ function renderCampaignTaskBoard() {
             <button onclick="filterTaskPhase(${ph})" class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${currentPhase === ph ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}">Phase ${ph}</button>
           `).join('')}
         </div>
-        <div class="ml-auto text-xs text-gray-400">
-          ${tasks.filter(t => t.status === 'completed').length}/${tasks.length} tasks completed
+        <div class="flex gap-2 ml-auto">
+          <button onclick="assignAllToMe()" class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition font-medium"><i class="fas fa-user-check mr-1"></i>Assign All to Me</button>
+          <span class="text-xs text-gray-400 self-center">${tasks.filter(t => t.status === 'completed').length}/${tasks.length} done</span>
         </div>
       </div>
 
@@ -1397,7 +1523,7 @@ function renderCampaignTaskBoard() {
                         <span class="text-xs text-gray-400">(${monthTasks.length} tasks, ${monthDone} done)</span>
                       </div>
                       <div class="flex items-center gap-2">
-                        ${monthDone === monthTasks.length && monthTasks.length > 0 ? '<span class="text-xs text-green-600 font-semibold"><i class="fas fa-check-circle mr-1"></i>Complete</span>' : ''}
+                        ${monthDone === monthTasks.length && monthTasks.length > 0 ? '<span class="text-xs text-green-600 font-semibold"><i class="fas fa-check-circle mr-1"></i>Complete</span>' : `<button onclick="bulkCompleteMonth(${m})" class="text-xs px-2 py-1 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition" title="Mark all month tasks complete"><i class="fas fa-check-double mr-1"></i>Complete Month</button>`}
                       </div>
                     </div>
                     <div class="divide-y divide-gray-50">
@@ -1513,6 +1639,31 @@ async function saveTaskEdit() {
   } catch (e) { toast('Failed to save task', 'error'); }
 }
 
+async function assignAllToMe() {
+  const myName = state.currentUser?.full_name || state.currentUser?.email || 'Me';
+  const tasks = state.campaignPlanData?.tasks || [];
+  const pendingTasks = tasks.filter(t => !t.assigned_to && t.status !== 'completed');
+  if (pendingTasks.length === 0) { toast('All tasks already assigned', 'warning'); return; }
+  try {
+    const taskIds = pendingTasks.map(t => t.id);
+    await API.patch('/campaign-plans/tasks/bulk', { task_ids: taskIds, assigned_to: myName });
+    toast(`Assigned ${taskIds.length} tasks to ${myName}`);
+    const campaignId = state.selectedCampaign?.id || state.campaignPlanData?.plan?.campaign_id;
+    if (campaignId) await loadCampaignPlanData(campaignId);
+  } catch (e) { toast('Failed to assign tasks', 'error'); }
+}
+
+async function bulkCompleteMonth(monthNum) {
+  const tasks = (state.campaignPlanData?.tasks || []).filter(t => t.month_number === monthNum && t.status !== 'completed');
+  if (tasks.length === 0) { toast('All tasks in this month already complete', 'warning'); return; }
+  try {
+    await API.patch('/campaign-plans/tasks/bulk', { task_ids: tasks.map(t => t.id), status: 'completed' });
+    toast(`Marked ${tasks.length} tasks complete for Month ${monthNum}`);
+    const campaignId = state.selectedCampaign?.id || state.campaignPlanData?.plan?.campaign_id;
+    if (campaignId) await loadCampaignPlanData(campaignId);
+  } catch (e) { toast('Failed to bulk complete', 'error'); }
+}
+
 async function saveNewPlan() {
   const campaignSel = document.getElementById('planCampaignId');
   const tierSel = document.querySelector('input[name="planTier"]:checked');
@@ -1526,9 +1677,8 @@ async function saveNewPlan() {
   const opt = campaignSel.options[campaignSel.selectedIndex];
   const clientId = opt.getAttribute('data-client');
 
-  const btn = event.target;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+  const btn = document.querySelector('#new_plan_modal button[onclick="saveNewPlan()"]') || event?.target;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...'; }
 
   try {
     const res = await API.post('/campaign-plans', {
@@ -1546,8 +1696,7 @@ async function saveNewPlan() {
   } catch (e) {
     const msg = e?.response?.data?.error || 'Failed to create plan';
     toast(msg, 'error');
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-magic mr-2"></i>Generate 12-Month Plan';
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic mr-2"></i>Generate 12-Month Plan'; }
   }
 }
 
@@ -1557,6 +1706,75 @@ async function openPlanTaskBoard(campaignId) {
   const ca = state.campaigns.find(c => c.id === campaignId);
   if (ca) state.selectedCampaign = ca;
   navigate('campaign_detail', {});
+}
+
+async function deletePlan(planId) {
+  if (!confirm('Delete this campaign plan and all tasks? This cannot be undone.')) return;
+  try {
+    await API.delete(`/campaign-plans/${planId}`);
+    toast('Campaign plan deleted');
+    state.campaignPlansList = null;
+    state.campaignPlanData = null;
+    await loadCampaignPlans();
+  } catch (e) { toast('Failed to delete plan', 'error'); }
+}
+
+// ── Reschedule Plan ─────────────────────────────────────────
+function openReschedulePlanModal(planId, currentStartDate) {
+  // Inject modal if not already in DOM
+  let modal = document.getElementById('reschedule_plan_modal');
+  if (!modal) {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div id="reschedule_plan_modal" class="modal-overlay hidden">
+        <div class="modal-box p-6 max-w-md">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-gray-900"><i class="fas fa-calendar-alt mr-2 text-blue-600"></i>Reschedule Campaign Plan</h3>
+            <button onclick="closeModal('reschedule_plan_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+          </div>
+          <p class="text-sm text-gray-500 mb-4">Changing the start date will recalculate all task due dates proportionally across all 12 months.</p>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">New Start Date</label>
+              <input type="date" id="reschedule_start_date" class="input-field">
+            </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+              <i class="fas fa-exclamation-triangle mr-1"></i>
+              This will update all pending task due dates. Completed tasks are not affected.
+            </div>
+          </div>
+          <div class="flex gap-3 mt-5">
+            <button onclick="closeModal('reschedule_plan_modal')" class="btn-secondary flex-1">Cancel</button>
+            <button onclick="saveReschedulePlan()" id="reschedule_save_btn" class="btn-primary flex-1"><i class="fas fa-calendar-check mr-2"></i>Reschedule</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(div.firstElementChild);
+    modal = document.getElementById('reschedule_plan_modal');
+  }
+  modal.setAttribute('data-plan-id', planId);
+  document.getElementById('reschedule_start_date').value = currentStartDate || '';
+  openModal('reschedule_plan_modal');
+}
+
+async function saveReschedulePlan() {
+  const modal = document.getElementById('reschedule_plan_modal');
+  const planId = modal?.getAttribute('data-plan-id');
+  const newDate = document.getElementById('reschedule_start_date')?.value;
+  if (!planId || !newDate) { toast('Please select a date', 'warning'); return; }
+  const btn = document.getElementById('reschedule_save_btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Rescheduling...'; }
+  try {
+    await API.patch(`/campaign-plans/${planId}/reschedule`, { start_date: newDate });
+    closeModal('reschedule_plan_modal');
+    toast('Plan rescheduled – task due dates updated ✓');
+    const campaignId = state.campaignPlanData?.plan?.campaign_id || state.selectedCampaign?.id;
+    if (campaignId) await loadCampaignPlanData(campaignId);
+    render();
+  } catch (e) {
+    toast(e?.response?.data?.error || 'Failed to reschedule plan', 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calendar-check mr-2"></i>Reschedule'; }
+  }
 }
 
 // ==============================
@@ -3017,7 +3235,8 @@ function getClientFormData() {
   return {
     company_name: f('cl_company_name'), website: f('cl_website'), industry: f('cl_industry'),
     abn: f('cl_abn'), status: f('cl_status'),
-    address: f('cl_address'), city: f('cl_city'), state: f('cl_state'),
+    address: f('cl_address'), city: f('cl_city'),
+    state: f('cl_state_input') || f('cl_state') || '',
     postcode: f('cl_postcode'), country: f('cl_country'), location: f('cl_location'),
     contact_name: f('cl_contact_name'), contact_email: f('cl_contact_email'),
     contact_phone: f('cl_contact_phone'),
@@ -3055,9 +3274,26 @@ async function saveEditClient(id) {
   }
   try {
     await API.put('/clients/' + id, data);
+    // If contract_start changed, offer to sync campaign start_date too
+    if (data.contract_start) {
+      const syncCampaigns = confirm(
+        `Contract start date set to ${data.contract_start}.\n\nSync this as the start date for all active campaigns for this client?\n\n(Note: to reschedule campaign plan task dates, use the "Reschedule Plan" button on the task board.)`
+      );
+      if (syncCampaigns) {
+        try {
+          await API.patch(`/clients/${id}/sync-campaign-dates`, { start_date: data.contract_start });
+          toast('Client and campaign start dates updated!');
+        } catch (e) {
+          toast('Client updated, but campaign sync failed', 'warning');
+        }
+      } else {
+        toast('Client updated!');
+      }
+    } else {
+      toast('Client updated!');
+    }
     state.clients = [];
     state.editingClient = null;
-    toast('Client updated!');
     navigate('clients');
   } catch (e) { toast('Failed to update client', 'error'); }
 }
@@ -3519,17 +3755,26 @@ async function trackLLM(campaignId) {
 }
 
 async function generateReport(campaignId) {
-  const btn = event.target;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
-  btn.disabled = true;
+  // Show a quick period picker
+  const now = new Date();
+  const defaultPeriod = now.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+  const period = prompt('Report period (e.g. "March 2025"):', defaultPeriod);
+  if (!period) return;
+
+  const btn = event?.target;
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...'; btn.disabled = true; }
   try {
-    const res = await API.post('/reports', { campaign_id: campaignId });
+    const res = await API.post('/reports/generate', {
+      campaign_id: campaignId,
+      report_period: period,
+      report_type: 'monthly'
+    });
     const viewUrl = '/reports/view/' + res.data.report_token;
     window.open(viewUrl, '_blank');
-    toast('Report generated!');
+    toast('Authority report generated!');
     state.reports = null;
   } catch (e) { toast('Report generation failed', 'error'); }
-  finally { btn.innerHTML = '<i class="fas fa-chart-line mr-2"></i>Generate Report'; btn.disabled = false; }
+  finally { if (btn) { btn.innerHTML = '<i class="fas fa-chart-line mr-2"></i>Generate Report'; btn.disabled = false; } }
 }
 
 async function sendReport(id) {

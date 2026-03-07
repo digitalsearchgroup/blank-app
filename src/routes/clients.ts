@@ -150,6 +150,27 @@ clientsRoutes.put('/:id', async (c) => {
   return c.json({ message: 'Client updated' })
 })
 
+// PATCH sync campaign start dates from contract_start
+clientsRoutes.patch('/:id/sync-campaign-dates', async (c) => {
+  const id = c.req.param('id')
+  const db = c.env.DB
+  const body = await c.req.json()
+  const { start_date } = body
+  if (!start_date) return c.json({ error: 'start_date required' }, 400)
+
+  // Update all active campaigns for this client
+  const result = await db.prepare(`
+    UPDATE campaigns SET start_date = ?, updated_at = ?
+    WHERE client_id = ? AND status = 'active'
+  `).bind(start_date, new Date().toISOString(), id).run()
+
+  await db.prepare(
+    "INSERT INTO activity_log (client_id, activity_type, description) VALUES (?, 'campaign_dates_synced', ?)"
+  ).bind(id, `Campaign start dates synced to ${start_date}`).run()
+
+  return c.json({ message: 'Campaign start dates synced', updated: result.meta.changes })
+})
+
 // DELETE client
 clientsRoutes.delete('/:id', async (c) => {
   const id = c.req.param('id')

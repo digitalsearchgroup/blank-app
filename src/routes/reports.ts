@@ -108,6 +108,34 @@ reportsRoutes.post('/generate', async (c) => {
       group: k.keyword_group,
     }))
 
+  // Gather campaign plan phase data (if exists)
+  const planData = await db.prepare(`
+    SELECT cp.*, pt.client_name AS tier_client_name, pt.tier_key,
+           pt.phase1_outcome, pt.phase2_outcome, pt.phase3_outcome, pt.phase4_outcome
+    FROM campaign_plans cp
+    JOIN plan_tiers pt ON cp.tier_id = pt.id
+    WHERE cp.campaign_id = ?
+  `).bind(campaign_id).first() as any
+
+  let phaseProgress: any[] = []
+  let completedTasks = 0
+  let totalTasks = 0
+
+  if (planData) {
+    const allTasks = await db.prepare(
+      'SELECT month_number, status FROM campaign_tasks WHERE plan_id = ?'
+    ).bind(planData.id).all()
+    const taskList = allTasks.results as any[]
+    totalTasks = taskList.length
+    completedTasks = taskList.filter(t => t.status === 'completed').length
+    phaseProgress = [1, 2, 3, 4].map(ph => {
+      const months = [1, 2, 3].map(m => (ph - 1) * 3 + m)
+      const pTasks = taskList.filter(t => months.includes(t.month_number))
+      const done = pTasks.filter(t => t.status === 'completed').length
+      return { phase: ph, total: pTasks.length, completed: done, pct: pTasks.length ? Math.round((done / pTasks.length) * 100) : 0 }
+    })
+  }
+
   const reportData = {
     keyword_highlights: keywordHighlights,
     total_keywords: kws.length,
@@ -116,6 +144,13 @@ reportsRoutes.post('/generate', async (c) => {
       mentions: llmSummary?.mentions || 0,
       mention_rate: llmSummary?.total_prompts > 0 ? Math.round(((llmSummary?.mentions || 0) / llmSummary.total_prompts) * 100) : 0,
     },
+    plan_data: planData ? {
+      tier: planData.tier_client_name,
+      tier_key: planData.tier_key,
+      total_tasks: totalTasks,
+      completed_tasks: completedTasks,
+      phase_progress: phaseProgress,
+    } : null,
   }
 
   // Generate AI summary
@@ -181,19 +216,25 @@ function generateReportSummary(campaign: any, improved: number, declined: number
   const name = campaign.company_name
   const positive = improved > declined
 
-  const summaries = [
-    `${name}'s organic search campaign continues ${positive ? 'to show strong momentum' : 'to progress'}. This reporting period saw ${improved} keyword${improved !== 1 ? 's' : ''} improve in rankings${improved > 0 ? `, including ${top3} now ranking in the top 3 positions` : ''}. ${top10} keyword${top10 !== 1 ? 's' : ''} are now ranking in the top 10 on Google, representing key visibility for your target audience.`,
-  ]
+  const phrases = positive
+    ? ['strong authority momentum', 'continued upward velocity', 'positive authority signals']
+    : ['steady progress', 'consistent development', 'progressive growth']
+  const phrase = phrases[Math.floor(Math.random() * phrases.length)]
+
+  let summary = `${name}'s digital authority campaign is demonstrating ${phrase}. `
+  summary += `This reporting period recorded ${improved} keyword${improved !== 1 ? 's' : ''} improving in organic visibility`
+  if (top3 > 0) summary += `, with ${top3} now occupying Top 3 positions`
+  summary += `. Currently ${top10} keyword${top10 !== 1 ? 's' : ''} rank within the Top 10 on Google, delivering consistent qualified visibility.`
 
   if (declined > 0) {
-    summaries.push(` ${declined} keyword${declined !== 1 ? 's' : ''} experienced minor fluctuations — this is normal in competitive markets and we are actively addressing these with content and technical optimisations.`)
+    summary += ` ${declined} keyword${declined !== 1 ? 's' : ''} experienced minor ranking fluctuations — standard in competitive verticals. We are addressing these through targeted content authority signals and entity reinforcement.`
   }
 
   if (contentPublished > 0) {
-    summaries.push(` We published ${contentPublished} piece${contentPublished !== 1 ? 's' : ''} of SEO-optimised content this month, building topical authority and creating new entry points for organic traffic.`)
+    summary += ` ${contentPublished} piece${contentPublished !== 1 ? 's' : ''} of authority-engineered content were published this period, strengthening topical depth and creating new organic entry points.`
   }
 
-  summaries.push(` Our focus for the next period will be on converting near-page-1 keywords to page 1 rankings, expanding content depth for high-priority topics, and continuing to monitor AI search visibility across ChatGPT, Google AI Overviews, and Perplexity.`)
+  summary += ` Next period focus: elevating near-page-1 keywords to page 1, expanding entity coverage for high-priority topics, and continuing AI search visibility monitoring across ChatGPT, Google AI Overviews, and Perplexity.`
 
-  return summaries.join('')
+  return summary
 }

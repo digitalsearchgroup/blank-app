@@ -13,7 +13,7 @@ dashboardRoutes.get('/overview', async (c) => {
         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
         SUM(CASE WHEN status = 'prospect' THEN 1 ELSE 0 END) as prospects,
         SUM(CASE WHEN status = 'churned' THEN 1 ELSE 0 END) as churned,
-        SUM(monthly_budget) as total_mrr
+        COALESCE(SUM(monthly_budget), 0) as total_mrr_clients
       FROM clients
     `).first(),
     db.prepare(`
@@ -64,12 +64,19 @@ dashboardRoutes.get('/overview', async (c) => {
     ORDER BY p.sent_at DESC LIMIT 5
   `).all()
 
+  // MRR from active campaigns
+  const mrrData = await db.prepare(
+    "SELECT COALESCE(SUM(monthly_investment), 0) as total_mrr FROM campaigns WHERE status = 'active'"
+  ).first() as any
+
   return c.json({
     clients: clientStats,
     campaigns: campaignStats,
     keywords: keywordStats,
     content: contentStats,
     proposals: proposalStats,
+    total_mrr: mrrData?.total_mrr || 0,
+    active_clients: (clientStats as any)?.active || 0,
     recent_activity: recentActivity.results,
     upcoming_content: upcomingContent.results,
     pending_proposals: pendingProposals.results,

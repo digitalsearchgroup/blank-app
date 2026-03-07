@@ -113,15 +113,15 @@ app.get('/proposals/approve/:token', async (c) => {
   `).bind(token).first() as any
 
   if (!proposal) {
-    return c.html(getApprovalPageHTML(null, 'invalid'))
+    return c.html(getApprovalPageHTML(null, 'invalid', token))
   }
 
   const isExpired = proposal.expires_at && new Date(proposal.expires_at) < new Date()
   if (isExpired) {
-    return c.html(getApprovalPageHTML(proposal, 'expired'))
+    return c.html(getApprovalPageHTML(proposal, 'expired', token))
   }
 
-  return c.html(getApprovalPageHTML(proposal, 'pending'))
+  return c.html(getApprovalPageHTML(proposal, 'pending', token))
 })
 
 app.post('/proposals/approve/:token', async (c) => {
@@ -244,90 +244,262 @@ app.get('*', async (c) => {
   return c.html(getAppHTML())
 })
 
-function getApprovalPageHTML(proposal: any, state: string): string {
-  const stateMessages: Record<string, { title: string; message: string; icon: string; color: string }> = {
-    invalid: { title: 'Invalid Link', message: 'This proposal link is invalid or has already been actioned.', icon: '❌', color: 'red' },
-    expired: { title: 'Proposal Expired', message: 'This proposal has expired. Please contact Digital Search Group for a new proposal.', icon: '⏰', color: 'yellow' },
-    pending: { title: 'Proposal Ready for Review', message: '', icon: '📋', color: 'blue' }
+function getApprovalPageHTML(proposal: any, pageState: string, token: string = ''): string {
+  // Parse line items if available
+  let lineItems: any[] = []
+  if (proposal?.line_items) {
+    try { lineItems = JSON.parse(proposal.line_items) } catch {}
   }
-  
-  const s = stateMessages[state] || stateMessages.invalid
+
+  const totalInv = Number(proposal?.monthly_investment || 0)
+  const contractLen = Number(proposal?.contract_length || 12)
+  const setupFee = Number(proposal?.setup_fee || 0)
+  const totalValue = totalInv * contractLen + setupFee
+
+  // Authority tier map for client-facing names
+  const tierMap: Record<string,{name:string,color:string,tagline:string}> = {
+    basic:   { name: 'AI Authority Foundation',   color: '#2563eb', tagline: 'Core authority placement with foundational media trust signals' },
+    core:    { name: 'AI Authority Growth',        color: '#7c3aed', tagline: 'Multi-tier authority placements with quarterly media injections' },
+    ultimate:{ name: 'AI Authority Accelerator',  color: '#ea580c', tagline: 'High-velocity placements, premium media injections & amplification' },
+    xtreme:  { name: 'AI Market Domination',       color: '#16a34a', tagline: 'Maximum authority velocity across all channels with full AI optimisation' },
+  }
+  const tierKey = proposal?.tier_key || ''
+  const tier = tierMap[tierKey]
+
+  if (pageState !== 'pending' || !proposal) {
+    const msgs: Record<string,{title:string,msg:string,icon:string}> = {
+      invalid: { title: 'Invalid Proposal Link', msg: 'This proposal link is invalid or has already been actioned. Please contact us if you believe this is an error.', icon: '❌' },
+      expired: { title: 'Proposal Expired', msg: 'This proposal has expired. Please contact Digital Search Group to request an updated proposal.', icon: '⏰' },
+    }
+    const m = msgs[pageState] || msgs.invalid
+    return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>DSG Proposal</title><script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head><body class="bg-gradient-to-br from-slate-900 to-blue-900 min-h-screen flex items-center justify-center p-4">
+<div class="text-center bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full">
+  <div class="text-6xl mb-4">${m.icon}</div>
+  <h1 class="text-2xl font-bold text-gray-900 mb-3">${m.title}</h1>
+  <p class="text-gray-500 mb-6">${m.msg}</p>
+  <a href="mailto:hello@digitalsearchgroup.com.au" class="inline-flex items-center gap-2 bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-blue-700 transition">
+    <i class="fas fa-envelope"></i> Contact Our Team
+  </a>
+</div></body></html>`
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DSG Proposal - ${proposal?.title || 'Review'}</title>
+  <title>${proposal.title} — Digital Search Group</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .gradient-hero { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%); }
+    .tier-badge { background: ${tier?.color || '#2563eb'}22; color: ${tier?.color || '#2563eb'}; border: 1px solid ${tier?.color || '#2563eb'}44; }
+    .approve-btn { background: linear-gradient(135deg, #16a34a, #15803d); transition: all 0.2s; }
+    .approve-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(22,163,74,0.4); }
+    .phase-card { border-left: 3px solid; }
+  </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-  <div class="max-w-3xl mx-auto py-12 px-4">
-    <div class="text-center mb-8">
-      <div class="text-5xl mb-4">${s.icon}</div>
-      <h1 class="text-3xl font-bold text-gray-900">Digital Search Group</h1>
-      <p class="text-gray-500 mt-1">Organic Digital Marketing Proposal</p>
-    </div>
-    ${state === 'pending' && proposal ? `
-    <div class="bg-white rounded-2xl shadow-lg p-8 mb-6">
-      <div class="flex justify-between items-start mb-6">
-        <div>
-          <h2 class="text-2xl font-bold text-gray-900">${proposal.title}</h2>
-          <p class="text-gray-500 mt-1">Prepared for ${proposal.company_name}</p>
+
+  <!-- Hero Header -->
+  <div class="gradient-hero text-white">
+    <div class="max-w-4xl mx-auto px-4 py-10">
+      <div class="flex items-center justify-between flex-wrap gap-4 mb-8">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+            <i class="fas fa-chart-line text-white text-xl"></i>
+          </div>
+          <div>
+            <div class="text-blue-200 text-xs font-semibold uppercase tracking-widest">Digital Search Group</div>
+            <div class="text-white font-bold text-lg">Authority Engineering Proposal</div>
+          </div>
         </div>
         <div class="text-right">
-          <div class="text-3xl font-bold text-blue-600">$${Number(proposal.monthly_investment).toLocaleString()}</div>
-          <div class="text-gray-500 text-sm">per month × ${proposal.contract_length} months</div>
+          <div class="text-3xl font-bold text-white">$${totalInv.toLocaleString()}<span class="text-blue-200 text-base font-normal">/mo</span></div>
+          <div class="text-blue-200 text-sm">${contractLen} months · Total $${totalValue.toLocaleString()}</div>
         </div>
-      </div>
-      
-      <div class="grid grid-cols-2 gap-4 mb-6 p-4 bg-blue-50 rounded-xl">
-        <div><span class="text-sm text-gray-500">Client</span><p class="font-semibold">${proposal.contact_name}</p></div>
-        <div><span class="text-sm text-gray-500">Website</span><p class="font-semibold">${proposal.website}</p></div>
-        <div><span class="text-sm text-gray-500">Service Type</span><p class="font-semibold capitalize">${(proposal.proposal_type || '').replace(/_/g,' ')}</p></div>
-        <div><span class="text-sm text-gray-500">Contract Length</span><p class="font-semibold">${proposal.contract_length} months</p></div>
       </div>
 
-      ${proposal.scope_summary ? `<div class="mb-6"><h3 class="font-semibold text-gray-700 mb-2">Scope of Work</h3><p class="text-gray-600 leading-relaxed">${proposal.scope_summary}</p></div>` : ''}
-      ${proposal.goals ? `<div class="mb-6"><h3 class="font-semibold text-gray-700 mb-2">Campaign Goals</h3><p class="text-gray-600">${proposal.goals}</p></div>` : ''}
-      ${proposal.target_keywords ? `<div class="mb-6"><h3 class="font-semibold text-gray-700 mb-2">Target Keywords</h3><p class="text-gray-600">${proposal.target_keywords}</p></div>` : ''}
-      
-      <div class="border-t pt-6">
-        <p class="text-sm text-gray-500 mb-4">By approving this proposal, you agree to engage Digital Search Group for the services outlined above.</p>
-        <div class="flex gap-4">
-          <button onclick="handleDecision('approve')" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-xl transition">
-            ✓ Approve Proposal
-          </button>
-          <button onclick="showRejectForm()" class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-3 px-6 rounded-xl transition">
-            ✗ Decline
-          </button>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white/10 rounded-2xl p-4 backdrop-blur">
+          <div class="text-blue-200 text-xs mb-1">Prepared For</div>
+          <div class="font-semibold text-white">${proposal.company_name}</div>
+          ${proposal.contact_name ? `<div class="text-blue-200 text-sm">${proposal.contact_name}</div>` : ''}
         </div>
-        <div id="rejectForm" class="hidden mt-4">
-          <textarea id="rejectReason" class="w-full border rounded-xl p-3 text-gray-700" rows="3" placeholder="Please let us know why you're declining (optional)..."></textarea>
-          <button onclick="handleDecision('reject')" class="mt-2 bg-red-600 text-white font-semibold py-2 px-6 rounded-xl">Confirm Decline</button>
+        <div class="bg-white/10 rounded-2xl p-4 backdrop-blur">
+          <div class="text-blue-200 text-xs mb-1">Service Package</div>
+          <div class="font-semibold text-white capitalize">${(proposal.proposal_type || '').replace(/_/g,' ')}</div>
+          ${tier ? `<div class="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold tier-badge"><i class="fas fa-shield-halved"></i>${tier.name}</div>` : ''}
+        </div>
+        <div class="bg-white/10 rounded-2xl p-4 backdrop-blur">
+          <div class="text-blue-200 text-xs mb-1">Engagement Period</div>
+          <div class="font-semibold text-white">${contractLen} months</div>
+          ${setupFee > 0 ? `<div class="text-blue-200 text-sm">+ $${setupFee.toLocaleString()} setup</div>` : '<div class="text-blue-200 text-sm">No setup fee</div>'}
         </div>
       </div>
     </div>
-    ` : `
-    <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
-      <p class="text-gray-700">${s.message}</p>
-      <a href="mailto:hello@digitalsearchgroup.com.au" class="mt-4 inline-block text-blue-600 hover:underline">Contact DSG →</a>
-    </div>
-    `}
   </div>
+
+  <div class="max-w-4xl mx-auto px-4 py-8 space-y-6">
+
+    <!-- Scope of Work -->
+    ${proposal.scope_summary ? `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2"><i class="fas fa-file-lines text-blue-500"></i> Scope of Work</h2>
+      <p class="text-gray-600 leading-relaxed">${proposal.scope_summary}</p>
+    </div>` : ''}
+
+    <!-- 4-Phase Authority Framework -->
+    ${tier ? `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2"><i class="fas fa-layer-group text-purple-500"></i> 12-Month Authority Framework</h2>
+      <p class="text-sm text-gray-500 mb-5">Your engagement is structured in four strategic phases, each building on the last.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        ${[
+          { ph: 1, name: 'Authority Foundation',   months: 'Months 1–3',  color: '#2563eb', icon: 'fa-seedling',  desc: 'Establish technical infrastructure, entity alignment, and baseline authority signals.' },
+          { ph: 2, name: 'Authority Expansion',    months: 'Months 4–6',  color: '#7c3aed', icon: 'fa-chart-line', desc: 'Scale authority placements, inject media trust signals, and expand entity coverage.' },
+          { ph: 3, name: 'Authority Acceleration', months: 'Months 7–9',  color: '#ea580c', icon: 'fa-rocket',    desc: 'High-velocity authority amplification with AI optimisation and citation building.' },
+          { ph: 4, name: 'Authority Compounding',  months: 'Months 10–12',color: '#16a34a', icon: 'fa-crown',    desc: 'Compound authority signals, dominate AI-generated search, and cement brand authority.' },
+        ].map(p => `
+          <div class="phase-card rounded-xl p-4 bg-gray-50" style="border-color:${p.color}">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style="background:${p.color}">
+                <i class="fas ${p.icon}"></i>
+              </div>
+              <div>
+                <div class="font-semibold text-gray-900 text-sm">Phase ${p.ph} – ${p.name}</div>
+                <div class="text-xs" style="color:${p.color}">${p.months}</div>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500">${p.desc}</p>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- Deliverables / Line Items -->
+    ${lineItems.length > 0 ? `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="fas fa-list-check text-green-500"></i> Included Deliverables</h2>
+      <div class="divide-y divide-gray-50">
+        ${lineItems.map((item: any) => `
+        <div class="flex items-center justify-between py-3">
+          <div class="flex items-start gap-3">
+            <div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <i class="fas fa-check text-green-600 text-xs"></i>
+            </div>
+            <div>
+              <div class="font-medium text-gray-800 text-sm">${item.description || item.name || ''}</div>
+              ${item.notes ? `<div class="text-xs text-gray-400">${item.notes}</div>` : ''}
+            </div>
+          </div>
+          ${item.monthly_price ? `<div class="text-sm font-semibold text-gray-700 whitespace-nowrap ml-4">$${Number(item.monthly_price).toLocaleString()}/mo</div>` : ''}
+        </div>`).join('')}
+      </div>
+    </div>` : (proposal.deliverables ? `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2"><i class="fas fa-list-check text-green-500"></i> Deliverables</h2>
+      <div class="text-gray-600 text-sm leading-relaxed whitespace-pre-line">${proposal.deliverables}</div>
+    </div>` : '')}
+
+    <!-- Goals -->
+    ${proposal.goals ? `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2"><i class="fas fa-bullseye text-red-500"></i> Campaign Goals</h2>
+      <div class="text-gray-600 text-sm leading-relaxed whitespace-pre-line">${proposal.goals}</div>
+    </div>` : ''}
+
+    <!-- Target Keywords -->
+    ${proposal.target_keywords ? `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2"><i class="fas fa-magnifying-glass text-blue-500"></i> Target Keywords</h2>
+      <div class="flex flex-wrap gap-2">
+        ${proposal.target_keywords.split(',').map((kw: string) => `<span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">${kw.trim()}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- Investment Summary -->
+    <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl border border-blue-200 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="fas fa-receipt text-blue-600"></i> Investment Summary</h2>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between"><span class="text-gray-600">Monthly retainer</span><span class="font-semibold text-gray-900">$${totalInv.toLocaleString()}/month</span></div>
+        <div class="flex justify-between"><span class="text-gray-600">Engagement period</span><span class="font-semibold text-gray-900">${contractLen} months</span></div>
+        ${setupFee > 0 ? `<div class="flex justify-between"><span class="text-gray-600">Setup fee (once)</span><span class="font-semibold text-gray-900">$${setupFee.toLocaleString()}</span></div>` : ''}
+        <div class="flex justify-between border-t border-blue-200 pt-2 mt-2">
+          <span class="font-bold text-gray-900">Total engagement value</span>
+          <span class="font-bold text-blue-700 text-lg">$${totalValue.toLocaleString()}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision Buttons -->
+    <div id="decisionSection" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <p class="text-sm text-gray-500 mb-5 text-center">By approving this proposal, you agree to engage Digital Search Group for the services outlined above under a ${contractLen}-month contract.</p>
+      <div class="flex gap-4 flex-wrap">
+        <button onclick="handleDecision('approve')" class="approve-btn flex-1 min-w-40 text-white font-bold py-4 px-6 rounded-xl text-base flex items-center justify-center gap-2">
+          <i class="fas fa-check-circle"></i> Approve & Begin
+        </button>
+        <button onclick="showRejectForm()" class="flex-1 min-w-32 bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold py-4 px-6 rounded-xl transition flex items-center justify-center gap-2">
+          <i class="fas fa-times-circle"></i> Decline
+        </button>
+      </div>
+      <div id="rejectForm" class="hidden mt-5 border-t pt-5">
+        <label class="text-sm font-medium text-gray-700 mb-2 block">Reason for declining (optional)</label>
+        <textarea id="rejectReason" class="w-full border border-gray-200 rounded-xl p-3 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-300" rows="3" placeholder="Please let us know why you're declining so we can improve..."></textarea>
+        <button onclick="handleDecision('reject')" class="mt-3 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-6 rounded-xl transition">Confirm Decline</button>
+      </div>
+    </div>
+
+    <div class="text-center text-gray-400 text-xs pb-8">
+      <p>Digital Search Group · hello@digitalsearchgroup.com.au</p>
+      <p class="mt-1">This proposal is confidential and prepared exclusively for ${proposal.company_name}</p>
+    </div>
+  </div>
+
   <script>
-    const token = window.location.pathname.split('/').pop();
-    function showRejectForm() { document.getElementById('rejectForm').classList.remove('hidden'); }
+    const token = '${token}';
+    function showRejectForm() {
+      document.getElementById('rejectForm').classList.remove('hidden');
+      document.getElementById('rejectForm').scrollIntoView({ behavior: 'smooth' });
+    }
     async function handleDecision(action) {
+      const btns = document.querySelectorAll('#decisionSection button');
+      btns.forEach(b => b.disabled = true);
       const reason = document.getElementById('rejectReason')?.value || '';
-      const res = await fetch('/proposals/approve/' + token, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ action, rejection_reason: reason })
-      });
-      const data = await res.json();
-      if (data.success) {
-        document.body.innerHTML = '<div class="min-h-screen flex items-center justify-center bg-gray-50"><div class="text-center p-8 bg-white rounded-2xl shadow-lg"><div class="text-6xl mb-4">' + (action==='approve'?'🎉':'👋') + '</div><h2 class="text-2xl font-bold text-gray-900">' + (action==='approve'?'Proposal Approved!':'Proposal Declined') + '</h2><p class="text-gray-500 mt-2">' + (action==='approve'?'Thank you! Our team will be in touch within 24 hours.':'We\'ve received your response. Feel free to reach out if you change your mind.') + '</p></div></div>';
+      try {
+        const res = await fetch('/proposals/approve/' + token, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, rejection_reason: reason })
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('decisionSection').innerHTML = action === 'approve' ? \`
+            <div class="text-center py-6">
+              <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check text-green-600 text-2xl"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Proposal Approved!</h3>
+              <p class="text-gray-500">Thank you! Our team will be in touch within 24 hours to kick off your campaign.</p>
+            </div>
+          \` : \`
+            <div class="text-center py-6">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-times text-gray-500 text-2xl"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Proposal Declined</h3>
+              <p class="text-gray-500">We've received your response. Feel free to reach out if you'd like to discuss a revised proposal.</p>
+            </div>
+          \`;
+        }
+      } catch (err) {
+        btns.forEach(b => b.disabled = false);
+        alert('Something went wrong. Please try again or contact us directly.');
       }
     }
   </script>
@@ -342,51 +514,82 @@ function getReportViewHTML(report: any): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SEO Report - ${report.company_name} - ${report.report_period}</title>
+  <title>Authority Report – ${report.company_name} – ${report.report_period}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }</style>
 </head>
-<body class="bg-gray-100">
-  <div class="max-w-4xl mx-auto py-8 px-4">
-    <div class="bg-gradient-to-r from-blue-900 to-blue-700 text-white rounded-2xl p-8 mb-6">
-      <p class="text-blue-200 text-sm">Digital Search Group</p>
-      <h1 class="text-3xl font-bold mt-1">${report.company_name}</h1>
-      <p class="text-blue-200 mt-1">SEO Performance Report · ${report.report_period}</p>
+<body>
+  <!-- Hero Header -->
+  <div style="background: linear-gradient(135deg, #0f172a, #1e3a8a)" class="text-white">
+    <div class="max-w-4xl mx-auto px-4 py-10">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+          <i class="fas fa-chart-line text-white text-xl"></i>
+        </div>
+        <div>
+          <div class="text-blue-200 text-xs font-semibold uppercase tracking-widest">Digital Search Group</div>
+          <div class="text-white font-bold text-lg">Authority Velocity Report</div>
+        </div>
+      </div>
+      <h1 class="text-3xl font-bold">${report.company_name}</h1>
+      <p class="text-blue-200 mt-1">${report.campaign_name} · ${report.report_type || 'Monthly'} Report · ${report.report_period}</p>
     </div>
-    
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  </div>
+
+  <div class="max-w-4xl mx-auto px-4 py-8 space-y-6">
+
+    <!-- Authority Velocity Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       ${[
-        ['Keywords Improved', report.keywords_improved, '↑', 'green'],
-        ['Keywords in Top 10', report.top10_keywords, '★', 'blue'],
-        ['Keywords in Top 3', report.top3_keywords, '🏆', 'yellow'],
-        ['Content Published', report.content_published, '📝', 'purple'],
+        ['Keywords Improved', report.keywords_improved, 'fa-arrow-up', 'green'],
+        ['In Top 10', report.top10_keywords, 'fa-star', 'blue'],
+        ['In Top 3', report.top3_keywords || 0, 'fa-trophy', 'yellow'],
+        ['Content Published', report.content_published, 'fa-pen-nib', 'purple'],
       ].map(([label, val, icon, color]) => `
-      <div class="bg-white rounded-xl p-4 shadow text-center">
-        <div class="text-2xl font-bold text-${color}-600">${val}</div>
-        <div class="text-gray-500 text-sm mt-1">${label}</div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-center">
+        <div class="w-10 h-10 rounded-xl bg-${color}-100 flex items-center justify-center mx-auto mb-3">
+          <i class="fas ${icon} text-${color}-600"></i>
+        </div>
+        <div class="text-3xl font-bold text-gray-900">${val}</div>
+        <div class="text-gray-500 text-xs mt-1">${label}</div>
       </div>`).join('')}
     </div>
 
+    <!-- Summary -->
     ${report.summary ? `
-    <div class="bg-white rounded-xl shadow p-6 mb-6">
-      <h2 class="text-lg font-bold text-gray-800 mb-3">Campaign Summary</h2>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+        <i class="fas fa-bolt text-yellow-500"></i> Authority Velocity Snapshot
+      </h2>
       <p class="text-gray-600 leading-relaxed">${report.summary}</p>
     </div>` : ''}
 
+    <!-- Keyword Performance -->
     ${data.keyword_highlights && data.keyword_highlights.length ? `
-    <div class="bg-white rounded-xl shadow p-6 mb-6">
-      <h2 class="text-lg font-bold text-gray-800 mb-4">Keyword Performance Highlights</h2>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <i class="fas fa-magnifying-glass-chart text-blue-500"></i> Keyword Performance
+      </h2>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
-          <thead><tr class="bg-gray-50"><th class="text-left p-3">Keyword</th><th class="p-3">Previous</th><th class="p-3">Current</th><th class="p-3">Change</th></tr></thead>
-          <tbody>
+          <thead>
+            <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+              <th class="text-left px-4 py-3 rounded-l-lg">Keyword</th>
+              <th class="px-4 py-3 text-center">Previous</th>
+              <th class="px-4 py-3 text-center">Current</th>
+              <th class="px-4 py-3 text-center rounded-r-lg">Change</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
             ${data.keyword_highlights.map((k: any) => `
-            <tr class="border-t">
-              <td class="p-3 font-medium">${k.keyword}</td>
-              <td class="p-3 text-center text-gray-500">${k.previous || '-'}</td>
-              <td class="p-3 text-center font-semibold">${k.current || '-'}</td>
-              <td class="p-3 text-center ${Number(k.change) < 0 ? 'text-green-600' : Number(k.change) > 0 ? 'text-red-500' : 'text-gray-400'}">
-                ${Number(k.change) < 0 ? '↑' + Math.abs(k.change) : Number(k.change) > 0 ? '↓' + k.change : '–'}
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 font-medium text-gray-900">${k.keyword}</td>
+              <td class="px-4 py-3 text-center text-gray-400">${k.previous || '–'}</td>
+              <td class="px-4 py-3 text-center font-semibold">${k.current || '–'}</td>
+              <td class="px-4 py-3 text-center font-semibold ${Number(k.change) < 0 ? 'text-green-600' : Number(k.change) > 0 ? 'text-red-500' : 'text-gray-400'}">
+                ${Number(k.change) < 0 ? '<i class="fas fa-arrow-up mr-1"></i>' + Math.abs(Number(k.change)) : Number(k.change) > 0 ? '<i class="fas fa-arrow-down mr-1"></i>' + k.change : '–'}
               </td>
             </tr>`).join('')}
           </tbody>
@@ -394,8 +597,54 @@ function getReportViewHTML(report: any): string {
       </div>
     </div>` : ''}
 
-    <div class="text-center text-gray-400 text-sm py-4">
-      Prepared by Digital Search Group · ${new Date().getFullYear()}
+    <!-- Authority Placements (if in data) -->
+    ${data.authority_placements && data.authority_placements.length ? `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <i class="fas fa-newspaper text-orange-500"></i> Media & Authority Layer Update
+      </h2>
+      <div class="space-y-3">
+        ${data.authority_placements.map((p: any) => `
+        <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+          <div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-external-link-alt text-orange-600 text-xs"></i>
+          </div>
+          <div>
+            <div class="font-medium text-gray-800 text-sm">${p.title || p.url || 'Authority Placement'}</div>
+            ${p.domain ? `<div class="text-xs text-gray-400">${p.domain}</div>` : ''}
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- Campaign Plan Phase Progress (if available) -->
+    ${data.plan_data ? `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+        <i class="fas fa-layer-group text-purple-500"></i> Authority Phase Progress
+      </h2>
+      <p class="text-sm text-gray-500 mb-5">${data.plan_data.tier} · ${data.plan_data.completed_tasks}/${data.plan_data.total_tasks} deliverables completed</p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        ${(data.plan_data.phase_progress || []).map((ph: any, i: number) => {
+          const colors = ['#2563eb','#7c3aed','#ea580c','#16a34a']
+          const names = ['Authority Foundation','Authority Expansion','Authority Acceleration','Authority Compounding']
+          const c = colors[i]
+          return `
+          <div class="rounded-xl p-4 bg-gray-50 border-l-4" style="border-color:${c}">
+            <div class="text-xs font-semibold mb-1" style="color:${c}">Phase ${ph.phase}</div>
+            <div class="font-bold text-gray-900 text-sm mb-2">${names[i]}</div>
+            <div class="bg-gray-200 rounded-full h-2 mb-1">
+              <div class="h-2 rounded-full" style="width:${ph.pct}%;background:${c}"></div>
+            </div>
+            <div class="text-xs text-gray-500">${ph.pct}% · ${ph.completed}/${ph.total} tasks</div>
+          </div>`
+        }).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="text-center text-gray-400 text-xs pb-8 border-t border-gray-100 pt-6">
+      <p>Prepared by <strong>Digital Search Group</strong> · hello@digitalsearchgroup.com.au</p>
+      <p class="mt-1">© ${new Date().getFullYear()} Digital Search Group. Confidential.</p>
     </div>
   </div>
 </body>

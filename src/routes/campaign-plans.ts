@@ -369,6 +369,56 @@ campaignPlansRoutes.get('/:id/report-data', async (c) => {
 })
 
 // ──────────────────────────────────────────────
+// PATCH /api/campaign-plans/:id/reschedule
+// Update plan start_date and recalculate all pending task due dates
+// ──────────────────────────────────────────────
+campaignPlansRoutes.patch('/:id/reschedule', async (c) => {
+  const id = c.req.param('id')
+  const { start_date } = await c.req.json()
+
+  if (!start_date) return c.json({ error: 'start_date required' }, 400)
+
+  const plan = await c.env.DB.prepare(
+    'SELECT * FROM campaign_plans WHERE id = ?'
+  ).bind(id).first() as any
+  if (!plan) return c.json({ error: 'Plan not found' }, 404)
+
+  // Update plan start_date
+  await c.env.DB.prepare(
+    'UPDATE campaign_plans SET start_date = ?, updated_at = ? WHERE id = ?'
+  ).bind(start_date, new Date().toISOString(), id).run()
+
+  // Also update the linked campaign's start_date
+  await c.env.DB.prepare(
+    'UPDATE campaigns SET start_date = ?, updated_at = ? WHERE id = ?'
+  ).bind(start_date, new Date().toISOString(), plan.campaign_id).run()
+
+  // Recalculate due dates for all non-completed tasks
+  const startDt = new Date(start_date)
+  const tasks = await c.env.DB.prepare(
+    "SELECT id, month_number, status FROM campaign_tasks WHERE plan_id = ? AND status != 'completed'"
+  ).bind(id).all()
+
+  for (const t of tasks.results as any[]) {
+    const dueDate = new Date(startDt)
+    dueDate.setMonth(dueDate.getMonth() + t.month_number - 1)
+    // Last day of that month
+    dueDate.setMonth(dueDate.getMonth() + 1, 0)
+    const dueDateStr = dueDate.toISOString().split('T')[0]
+
+    await c.env.DB.prepare(
+      'UPDATE campaign_tasks SET due_date = ?, updated_at = ? WHERE id = ?'
+    ).bind(dueDateStr, new Date().toISOString(), t.id).run()
+  }
+
+  await c.env.DB.prepare(
+    "INSERT INTO activity_log (client_id, activity_type, description) VALUES (?, 'plan_rescheduled', ?)"
+  ).bind(plan.client_id, `Campaign plan rescheduled: new start date ${start_date}, ${(tasks.results as any[]).length} task due dates updated`).run()
+
+  return c.json({ success: true, tasks_updated: (tasks.results as any[]).length })
+})
+
+// ──────────────────────────────────────────────
 // DELETE /api/campaign-plans/:id – delete plan + tasks
 // ──────────────────────────────────────────────
 campaignPlansRoutes.delete('/:id', async (c) => {
