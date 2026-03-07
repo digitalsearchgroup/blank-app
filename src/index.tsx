@@ -258,7 +258,7 @@ function getApprovalPageHTML(proposal: any, pageState: string, token: string = '
 
   // Authority tier map for client-facing names
   const tierMap: Record<string,{name:string,color:string,tagline:string}> = {
-    basic:   { name: 'AI Authority Foundation',   color: '#e85d00', tagline: 'Core authority placement with foundational media trust signals' },
+    basic:   { name: 'AI Authority Foundation',   color: '#7C5CFC', tagline: 'Core authority placement with foundational media trust signals' },
     core:    { name: 'AI Authority Growth',        color: '#7c3aed', tagline: 'Multi-tier authority placements with quarterly media injections' },
     ultimate:{ name: 'AI Authority Accelerator',  color: '#ea580c', tagline: 'High-velocity placements, premium media injections & amplification' },
     xtreme:  { name: 'AI Market Domination',       color: '#16a34a', tagline: 'Maximum authority velocity across all channels with full AI optimisation' },
@@ -276,12 +276,13 @@ function getApprovalPageHTML(proposal: any, pageState: string, token: string = '
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>DSG Proposal</title><script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head><body class="bg-gradient-to-br from-slate-900 to-blue-900 min-h-screen flex items-center justify-center p-4">
 <div class="text-center bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full">
   <div class="text-6xl mb-4">${m.icon}</div>
   <h1 class="text-2xl font-bold text-gray-900 mb-3">${m.title}</h1>
   <p class="text-gray-500 mb-6">${m.msg}</p>
-  <a href="mailto:hello@digitalsearchgroup.com.au" class="inline-flex items-center gap-2 text-white font-semibold py-3 px-6 rounded-xl transition" style="background:#e85d00">
+  <a href="mailto:hello@digitalsearchgroup.com.au" class="inline-flex items-center gap-2 text-white font-semibold py-3 px-6 rounded-xl transition" style="background:#7C5CFC">
     <i class="fas fa-envelope"></i> Contact Our Team
   </a>
 </div></body></html>`
@@ -295,10 +296,12 @@ function getApprovalPageHTML(proposal: any, pageState: string, token: string = '
   <title>${proposal.title} — Digital Search Group</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    body { font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    h1, h2, h3, h4, h5, .font-bold.text-xl, .font-bold.text-2xl, .font-bold.text-3xl { font-family: 'Maven Pro', 'Montserrat', sans-serif; }
     .gradient-hero { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%); }
-    .tier-badge { background: ${tier?.color || '#e85d00'}22; color: ${tier?.color || '#e85d00'}; border: 1px solid ${tier?.color || '#e85d00'}44; }
+    .tier-badge { background: ${tier?.color || '#7C5CFC'}22; color: ${tier?.color || '#7C5CFC'}; border: 1px solid ${tier?.color || '#7C5CFC'}44; }
     .approve-btn { background: linear-gradient(135deg, #16a34a, #15803d); transition: all 0.2s; }
     .approve-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(22,163,74,0.4); }
     .phase-card { border-left: 3px solid; }
@@ -424,13 +427,13 @@ function getApprovalPageHTML(proposal: any, pageState: string, token: string = '
     </div>` : ''}
 
     <!-- Investment Summary -->
-    <div class="rounded-2xl border p-6" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border-color:#fed7aa">
-      <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="fas fa-receipt text-orange-600"></i> Investment Summary</h2>
+    <div class="rounded-2xl border p-6" style="background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-color:#c4b5fd">
+      <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><i class="fas fa-receipt text-violet-600"></i> Investment Summary</h2>
       <div class="space-y-2 text-sm">
         <div class="flex justify-between"><span class="text-gray-600">Monthly retainer</span><span class="font-semibold text-gray-900">$${totalInv.toLocaleString()}/month</span></div>
         <div class="flex justify-between"><span class="text-gray-600">Engagement period</span><span class="font-semibold text-gray-900">${contractLen} months</span></div>
         ${setupFee > 0 ? `<div class="flex justify-between"><span class="text-gray-600">Setup fee (once)</span><span class="font-semibold text-gray-900">$${setupFee.toLocaleString()}</span></div>` : ''}
-        <div class="flex justify-between border-t border-orange-200 pt-2 mt-2">
+        <div class="flex justify-between border-t border-violet-200 pt-2 mt-2">
           <span class="font-bold text-gray-900">Total engagement value</span>
           <span class="font-bold text-blue-700 text-lg">$${totalValue.toLocaleString()}</span>
         </div>
@@ -518,7 +521,8 @@ function getReportViewHTML(report: any): string {
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-  <style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }</style>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>body { font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }</style>
 </head>
 <body>
   <!-- Hero Header -->
@@ -601,13 +605,13 @@ function getReportViewHTML(report: any): string {
     ${data.authority_placements && data.authority_placements.length ? `
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
       <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-        <i class="fas fa-newspaper text-orange-500"></i> Media & Authority Layer Update
+        <i class="fas fa-newspaper text-violet-500"></i> Media & Authority Layer Update
       </h2>
       <div class="space-y-3">
         ${data.authority_placements.map((p: any) => `
         <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-          <div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
-            <i class="fas fa-external-link-alt text-orange-600 text-xs"></i>
+          <div class="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-external-link-alt text-violet-600 text-xs"></i>
           </div>
           <div>
             <div class="font-medium text-gray-800 text-sm">${p.title || p.url || 'Authority Placement'}</div>
@@ -626,7 +630,7 @@ function getReportViewHTML(report: any): string {
       <p class="text-sm text-gray-500 mb-5">${data.plan_data.tier} · ${data.plan_data.completed_tasks}/${data.plan_data.total_tasks} deliverables completed</p>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         ${(data.plan_data.phase_progress || []).map((ph: any, i: number) => {
-          const colors = ['#e85d00','#7c3aed','#16a34a','#0ea5e9']
+          const colors = ['#7C5CFC','#7c3aed','#16a34a','#0ea5e9']
           const names = ['Authority Foundation','Authority Expansion','Authority Acceleration','Authority Compounding']
           const c = colors[i]
           return `
@@ -658,18 +662,19 @@ function getAppHTML(): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DSG Campaign Manager – Digital Search Group</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a1a2e'/><text x='16' y='22' text-anchor='middle' font-size='16' font-weight='bold' font-family='Arial' fill='%23e85d00'>D</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a1a2e'/><text x='16' y='22' text-anchor='middle' font-size='16' font-weight='bold' font-family='Arial' fill='%237C5CFC'>D</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
   <style>
-    /* DSG Brand Colors: --dsg-dark: #1a1a2e, --dsg-orange: #e85d00, --dsg-charcoal: #313131 */
+    /* DSG Brand Colors: --dsg-dark: #1a1a2e, --dsg-primary: #7C5CFC (violet), --dsg-charcoal: #313131 */
     :root {
       --dsg-dark: #1a1a2e;
       --dsg-dark-2: #16213e;
-      --dsg-orange: #e85d00;
-      --dsg-orange-hover: #c94f00;
+      --dsg-primary: #7C5CFC;
+      --dsg-primary-hover: #6A4FE8;
       --dsg-charcoal: #313131;
     }
 
@@ -683,15 +688,15 @@ function getAppHTML(): string {
       cursor: pointer; width: 100%; text-align: left;
     }
     .sidebar-link:hover { color: #fff; background: rgba(255,255,255,0.1); }
-    .sidebar-link.active { color: #fff; background: rgba(232,93,0,0.25); border-left: 3px solid #e85d00; }
+    .sidebar-link.active { color: #fff; background: rgba(124,92,252,0.25); border-left: 3px solid #7C5CFC; }
     .sidebar-link i, .sidebar-link span { color: inherit; }
 
     /* Cards */
     .card { background: #fff; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.07); border: 1px solid #f3f4f6; padding: 1.5rem; }
 
-    /* Buttons — DSG Orange primary */
-    .btn-primary { background: #e85d00; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
-    .btn-primary:hover { background: #c94f00; }
+    /* Buttons — DSG Violet primary */
+    .btn-primary { background: #7C5CFC; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
+    .btn-primary:hover { background: #6A4FE8; }
     .btn-secondary { background: #f3f4f6; color: #374151; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
     .btn-secondary:hover { background: #e5e7eb; }
     .btn-success { background: #16a34a; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
@@ -699,9 +704,9 @@ function getAppHTML(): string {
     .btn-danger { background: #dc2626; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
     .btn-danger:hover { background: #b91c1c; }
 
-    /* Inputs — DSG orange focus */
+    /* Inputs — DSG violet focus */
     .input-field { width: 100%; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 0.625rem 1rem; font-size: 0.875rem; outline: none; transition: box-shadow 0.15s; }
-    .input-field:focus { box-shadow: 0 0 0 2px rgba(232,93,0,0.3); border-color: #e85d00; }
+    .input-field:focus { box-shadow: 0 0 0 2px rgba(124,92,252,0.3); border-color: #7C5CFC; }
 
     /* Modals */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
@@ -711,14 +716,16 @@ function getAppHTML(): string {
     /* Misc */
     .rank-improved { color: #16a34a; }
     .rank-declined { color: #dc2626; }
-    .rank-new { color: #e85d00; }
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f8fafc; color: #313131; }
+    .rank-new { color: #7C5CFC; }
+    body { font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #313131; }
+    h1, h2, h3, h4, h5, h6, .font-heading { font-family: 'Maven Pro', 'Montserrat', system-ui, sans-serif; font-weight: 700; }
+    .text-lg.font-bold, .text-xl.font-bold, .text-2xl.font-bold, .text-3xl.font-bold { font-family: 'Maven Pro', 'Montserrat', system-ui, sans-serif; }
     .shimmer { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
     @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
     .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
     .toast.show { transform: translateY(0); opacity: 1; }
     /* DSG Logo mark in sidebar */
-    .dsg-logo-mark { width: 36px; height: 36px; background: #e85d00; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; color: #fff; letter-spacing: -1px; flex-shrink: 0; }
+    .dsg-logo-mark { width: 36px; height: 36px; background: #7C5CFC; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; color: #fff; letter-spacing: -1px; flex-shrink: 0; }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -738,16 +745,19 @@ function getOnboardingFormHTML(token: string): string {
   <title>Client Onboarding – Digital Search Group</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
   <style>
     .step { display: none; }
     .step.active { display: block; }
-    .tab-btn.active { background: #e85d00; color: #fff; }
+    .tab-btn.active { background: #7C5CFC; color: #fff; }
     input, textarea, select { transition: border-color 0.15s; }
-    input:focus, textarea:focus, select:focus { outline: none; border-color: #e85d00; box-shadow: 0 0 0 3px rgba(232,93,0,0.1); }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #7C5CFC; box-shadow: 0 0 0 3px rgba(124,92,252,0.1); }
     .progress-bar { transition: width 0.4s ease; }
     .section-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 16px; background: #fff; }
     .field-row { margin-bottom: 20px; }
+    body, input, select, textarea { font-family: 'Montserrat', system-ui, sans-serif; }
+    h1, h2, h3, h4, .section-title { font-family: 'Maven Pro', 'Montserrat', system-ui, sans-serif; }
     label { font-size: 14px; font-weight: 500; color: #374151; display: block; margin-bottom: 6px; }
     label .req { color: #ef4444; }
     input[type=text], input[type=email], input[type=url], input[type=tel], input[type=number], textarea, select {
@@ -757,20 +767,20 @@ function getOnboardingFormHTML(token: string): string {
     .hint { font-size: 12px; color: #94a3b8; margin-top: 4px; }
     .chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
     .chip { padding: 4px 12px; border-radius: 20px; border: 1.5px solid #cbd5e1; font-size: 13px; cursor: pointer; user-select: none; }
-    .chip.selected { border-color: #e85d00; background: #fff7ed; color: #e85d00; }
+    .chip.selected { border-color: #7C5CFC; background: #f5f3ff; color: #7C5CFC; }
     .section-title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
     .section-sub { font-size: 13px; color: #64748b; margin-bottom: 20px; }
     .save-indicator { font-size: 12px; color: #22c55e; display: none; }
     .save-indicator.show { display: inline; }
   </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 to-orange-50 min-h-screen">
+<body class="bg-gradient-to-br from-slate-50 to-violet-50 min-h-screen">
 
   <!-- Header -->
   <div class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
     <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#e85d00">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#7C5CFC">
           <span style="font-size:14px;font-weight:900;color:#fff">DSG</span>
         </div>
         <div>
@@ -781,10 +791,10 @@ function getOnboardingFormHTML(token: string): string {
       <div class="flex items-center gap-4">
         <div class="text-right hidden sm:block">
           <div class="text-xs text-slate-400">Form Completion</div>
-          <div class="text-sm font-bold" style="color:#e85d00" id="headerPct">0%</div>
+          <div class="text-sm font-bold" style="color:#7C5CFC" id="headerPct">0%</div>
         </div>
         <div class="w-32 bg-slate-100 rounded-full h-2 hidden sm:block">
-          <div class="progress-bar h-2 rounded-full" id="headerProgress" style="width:0%;background:#e85d00"></div>
+          <div class="progress-bar h-2 rounded-full" id="headerProgress" style="width:0%;background:#7C5CFC"></div>
         </div>
       </div>
     </div>
@@ -792,14 +802,14 @@ function getOnboardingFormHTML(token: string): string {
 
   <!-- Intro -->
   <div id="introScreen" class="max-w-4xl mx-auto px-6 py-12 text-center">
-    <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-6" style="background:#fff7ed">
-      <i class="fas fa-clipboard-list text-3xl" style="color:#e85d00"></i>
+    <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-6" style="background:#f5f3ff">
+      <i class="fas fa-clipboard-list text-3xl" style="color:#7C5CFC"></i>
     </div>
     <h1 class="text-3xl font-bold text-slate-800 mb-4">Welcome to Your Onboarding</h1>
     <p class="text-slate-500 text-lg mb-2 max-w-xl mx-auto" id="introText">We're excited to start working with you. This form collects everything we need to deliver outstanding results for your brand.</p>
     <p class="text-slate-400 text-sm mb-8">Estimated time: <strong>15–25 minutes</strong> &nbsp;|&nbsp; Your progress is saved automatically</p>
     <div id="loadingIntro" class="text-slate-400 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Loading your form...</div>
-    <button id="startBtn" class="hidden text-white px-10 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg" style="background:#e85d00" onmouseenter="this.style.background='#c94f00'" onmouseleave="this.style.background='#e85d00'">
+    <button id="startBtn" class="hidden text-white px-10 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg" style="background:#7C5CFC" onmouseenter="this.style.background='#6A4FE8'" onmouseleave="this.style.background='#7C5CFC'">
       Start Onboarding <i class="fas fa-arrow-right ml-2"></i>
     </button>
     <p class="text-red-500 text-sm mt-4 hidden" id="introError"></p>
@@ -821,7 +831,7 @@ function getOnboardingFormHTML(token: string): string {
       </button>
       <div class="flex items-center gap-3 ml-auto">
         <span class="save-indicator" id="saveIndicator"><i class="fas fa-check-circle mr-1"></i>Saved</span>
-        <button id="nextBtn" onclick="nextStep()" class="px-6 py-3 text-white rounded-xl font-semibold transition-colors shadow-sm" style="background:#e85d00">
+        <button id="nextBtn" onclick="nextStep()" class="px-6 py-3 text-white rounded-xl font-semibold transition-colors shadow-sm" style="background:#7C5CFC">
           Save & Continue <i class="fas fa-arrow-right ml-2"></i>
         </button>
         <button id="submitBtn" onclick="submitForm()" class="hidden px-8 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors shadow-sm">
@@ -897,7 +907,7 @@ function buildNav() {
   const nav = document.getElementById('stepNav');
   nav.innerHTML = STEPS.map((s,i) => \`
     <button onclick="gotoStep(\${i})" id="nav_\${i}"
-      class="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 text-sm font-medium text-slate-500 hover:border-orange-300 hover:text-orange-600 transition-colors">
+      class="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 text-sm font-medium text-slate-500 hover:border-violet-300 hover:text-violet-600 transition-colors">
       <i class="fas \${s.icon} text-xs"></i>\${s.label}
     </button>
   \`).join('');
@@ -908,11 +918,11 @@ function updateNav(idx) {
     const btn = document.getElementById(\`nav_\${i}\`);
     if (!btn) return;
     if (i === idx) {
-      btn.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-semibold shadow-sm';btn.style.background='#e85d00';
+      btn.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-semibold shadow-sm';btn.style.background='#7C5CFC';
     } else if (i < idx) {
       btn.className = 'flex items-center gap-2 px-4 py-2 rounded-full bg-green-50 border border-green-200 text-green-600 text-sm font-medium';
     } else {
-      btn.className = 'flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 text-sm font-medium text-slate-500 hover:border-orange-300 hover:text-orange-600 transition-colors';btn.style.background='';
+      btn.className = 'flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 text-sm font-medium text-slate-500 hover:border-violet-300 hover:text-violet-600 transition-colors';btn.style.background='';
     }
   });
   const pct = Math.round((idx / STEPS.length) * 100);
@@ -1058,7 +1068,7 @@ function checkbox(label, key, hint='') {
 function getStepHTML(key, d) {
   if (key === 'brand') return \`
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-building text-orange-600 mr-2"></i>Business & Brand Details</div>
+      <div class="section-title"><i class="fas fa-building text-violet-600 mr-2"></i>Business & Brand Details</div>
       <div class="section-sub">Help us understand your business so we can create standout content that truly represents your brand.</div>
       \${field('Legal Business Name','legal_business_name','text','e.g. Acme Pty Ltd',true)}
       \${field('Trading / Brand Name','trading_name','text','Name your customers know you as')}
@@ -1077,14 +1087,14 @@ function getStepHTML(key, d) {
       \${select('Number of Staff','number_of_staff',[{v:'1-5',l:'1–5'},{v:'6-20',l:'6–20'},{v:'21-50',l:'21–50'},{v:'50+',l:'50+'}])}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-map-marker-alt text-orange-600 mr-2"></i>Service Areas</div>
+      <div class="section-title"><i class="fas fa-map-marker-alt text-violet-600 mr-2"></i>Service Areas</div>
       <div class="section-sub">Where do you operate? This guides our local SEO and content targeting.</div>
       \${textarea('Suburbs / Areas Served','service_areas','List suburbs or areas, one per line (or "National" if nationwide).')}
       \${checkbox('We serve customers nationally (Australia-wide)','national_service')}
       \${field('Service Radius (km, if applicable)','service_radius_km','number','e.g. 50')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-link text-orange-600 mr-2"></i>Digital Presence & Access</div>
+      <div class="section-title"><i class="fas fa-link text-violet-600 mr-2"></i>Digital Presence & Access</div>
       <div class="section-sub">Please provide your online profiles and any tool access we'll need to manage your campaign.</div>
       \${field('Website URL','website_url','url','https://yourwebsite.com.au',true)}
       \${field('Facebook Page URL','facebook_url','url','https://facebook.com/yourbusiness')}
@@ -1102,7 +1112,7 @@ function getStepHTML(key, d) {
 
   if (key === 'audience') return \`
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-user-circle text-orange-600 mr-2"></i>Primary Customer Persona</div>
+      <div class="section-title"><i class="fas fa-user-circle text-violet-600 mr-2"></i>Primary Customer Persona</div>
       <div class="section-sub">Describe your ideal customer. The more detail you provide, the more targeted your content and campaigns will be.</div>
       \${field('Persona Name (give them a name)','primary_persona_name','text','e.g. "Busy Homeowner Helen"')}
       \${field('Age Range','primary_persona_age_range','text','e.g. 35–55')}
@@ -1117,7 +1127,7 @@ function getStepHTML(key, d) {
       \${chips('Preferred Channels to Reach Them','primary_persona_preferred_channels',['Google Search','Facebook','Instagram','LinkedIn','YouTube','Email','Word of Mouth','Review Sites','TikTok','Direct Mail'],'Select all that apply')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-chart-line text-orange-600 mr-2"></i>Customer Journey & Value</div>
+      <div class="section-title"><i class="fas fa-chart-line text-violet-600 mr-2"></i>Customer Journey & Value</div>
       \${select('Average Sales Cycle','avg_sales_cycle',[{v:'same_day',l:'Same day'},{v:'1-7_days',l:'1–7 days'},{v:'1-4_weeks',l:'1–4 weeks'},{v:'1-3_months',l:'1–3 months'},{v:'3_plus_months',l:'3+ months'}])}
       \${field('Average Transaction Value','avg_transaction_value','text','e.g. $2,500 or $50–$500')}
       \${field('Estimated Customer Lifetime Value','customer_lifetime_value','text','e.g. $10,000 over 3 years')}
@@ -1125,7 +1135,7 @@ function getStepHTML(key, d) {
       \${field('Referral Rate (estimate)','referral_rate','text','e.g. 25%')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-trophy text-orange-600 mr-2"></i>Competitor Landscape</div>
+      <div class="section-title"><i class="fas fa-trophy text-violet-600 mr-2"></i>Competitor Landscape</div>
       <div class="section-sub">Understanding your competitors helps us position your brand more effectively.</div>
       \${textarea('Main Competitors','main_competitors','List competitor names and websites, one per line. e.g. Competitor Name – www.competitor.com.au',5)}
       \${textarea('Their Strengths','competitor_strengths','What do competitors do well?',3)}
@@ -1133,7 +1143,7 @@ function getStepHTML(key, d) {
       \${textarea('Your Advantage Over Them','our_advantage_over_competitors','Why should a customer choose you instead?',3)}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-map-pin text-orange-600 mr-2"></i>Geographic Targeting</div>
+      <div class="section-title"><i class="fas fa-map-pin text-violet-600 mr-2"></i>Geographic Targeting</div>
       \${textarea('Target Suburbs','target_suburbs','One per line – specific suburbs you want to rank / target in')}
       \${textarea('Target Cities','target_cities','One per line')}
       \${chips('Target States','target_states',['NSW','VIC','QLD','SA','WA','TAS','NT','ACT'],'Select all that apply')}
@@ -1142,7 +1152,7 @@ function getStepHTML(key, d) {
 
   if (key === 'content') return \`
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-pen-nib text-orange-600 mr-2"></i>Brand Voice & Tone</div>
+      <div class="section-title"><i class="fas fa-pen-nib text-violet-600 mr-2"></i>Brand Voice & Tone</div>
       <div class="section-sub">We use this to ensure every piece of content sounds authentically like your brand.</div>
       \${chips('Brand Tone (select all that apply)','brand_tone',['Professional','Friendly','Authoritative','Conversational','Bold','Empathetic','Playful','Educational','Inspiring','Trustworthy','Casual','Technical'])}
       \${chips('Brand Personality Traits','brand_personality',['Reliable','Innovative','Approachable','Premium','Fun','Caring','Expert','Local','Modern','Traditional'])}
@@ -1152,7 +1162,7 @@ function getStepHTML(key, d) {
       \${checkbox('We are happy to use industry terminology / jargon','use_industry_jargon')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-ban text-orange-600 mr-2"></i>Language Rules</div>
+      <div class="section-title"><i class="fas fa-ban text-violet-600 mr-2"></i>Language Rules</div>
       \${field('Brand Tagline / Slogan','tagline','text','Your primary tagline')}
       \${textarea('Words / Phrases We ALWAYS Use','words_to_always_use','One per line – words central to your brand identity',3)}
       \${textarea('Words / Phrases We NEVER Use','words_to_never_use','One per line – words to strictly avoid',3)}
@@ -1161,15 +1171,15 @@ function getStepHTML(key, d) {
       \${textarea('Legal Disclaimers or Restrictions','legal_restrictions','Any legal requirements, compliance notes, or content restrictions we must follow.',3)}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-palette text-orange-600 mr-2"></i>Visual Brand Identity</div>
-      \${field('Primary Brand Colour (hex)','primary_colour','text','e.g. #e85d00')}
+      <div class="section-title"><i class="fas fa-palette text-violet-600 mr-2"></i>Visual Brand Identity</div>
+      \${field('Primary Brand Colour (hex)','primary_colour','text','e.g. #7C5CFC')}
       \${field('Secondary Brand Colour (hex)','secondary_colour','text','e.g. #1e3a5f')}
       \${field('Logo URL (if hosted online)','logo_url','url','Link to your logo file')}
       \${chips('Imagery Style Preference','imagery_style',['Real Photos (no stock)','Lifestyle Photography','Professional Stock','Illustrated / Icons','Bold Graphics','Minimal / Clean','Behind the Scenes'])}
       \${textarea('Additional Imagery Notes','imagery_notes','Any specific rules about photos? (e.g. must show real team, no competitor branding visible)')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-file-alt text-orange-600 mr-2"></i>Content Preferences</div>
+      <div class="section-title"><i class="fas fa-file-alt text-violet-600 mr-2"></i>Content Preferences</div>
       \${select('Preferred Blog Post Length','blog_preferred_length',[{v:'800-1200',l:'800–1,200 words'},{v:'1200-2000',l:'1,200–2,000 words'},{v:'2000+',l:'2,000+ words (comprehensive)'}])}
       \${select('Blog Heading Style','blog_heading_style',[{v:'question-based',l:'Question-Based (e.g. "What is...?")'},{v:'keyword-rich',l:'Keyword-Rich'},{v:'benefit-led',l:'Benefit-Led (e.g. "How to get more...")'}])}
       \${field('Blog Author Name','blog_author_name','text','Name to display as blog author')}
@@ -1183,7 +1193,7 @@ function getStepHTML(key, d) {
 
   if (key === 'seo') return \`
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-search text-orange-600 mr-2"></i>SEO History & Baseline</div>
+      <div class="section-title"><i class="fas fa-search text-violet-600 mr-2"></i>SEO History & Baseline</div>
       \${checkbox('We have had SEO performed before','current_seo_performed')}
       \${field('Previous SEO Agency (if any)','previous_agency','text','Agency name')}
       \${textarea('Why did you leave / what was the outcome?','previous_agency_end_reason','',3)}
@@ -1191,14 +1201,14 @@ function getStepHTML(key, d) {
       \${textarea('Penalty details (if yes)','penalty_details','Describe the penalty and when it occurred.')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-key text-orange-600 mr-2"></i>Target Keywords & Pages</div>
+      <div class="section-title"><i class="fas fa-key text-violet-600 mr-2"></i>Target Keywords & Pages</div>
       <div class="section-sub">Your input here guides our keyword strategy. We'll also do our own research, but this gives us your business's perspective.</div>
       \${textarea('Seed Keywords (client-provided)','client_seed_keywords','Keywords your customers use to find you. One per line. e.g. "plumber sydney", "emergency plumbing",',6)}
       \${textarea('Priority Pages to Optimise','priority_pages','List page URLs to prioritise, one per line (e.g. /services/plumbing-sydney)',4)}
       \${textarea('Pages to Exclude from Optimisation','pages_to_exclude','Any pages we should NOT touch (e.g. /admin, /old-landing-page)',3)}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-map-marker text-orange-600 mr-2"></i>Local SEO Details</div>
+      <div class="section-title"><i class="fas fa-map-marker text-violet-600 mr-2"></i>Local SEO Details</div>
       \${checkbox('This is a local / service-area business','is_local_seo')}
       \${field('Google Business Profile Name (exact)','gmb_name','text','Must exactly match your Google Business listing')}
       \${field('Google Business Primary Category','gmb_category','text','e.g. Plumber')}
@@ -1206,7 +1216,7 @@ function getStepHTML(key, d) {
       \${checkbox('This is a Service Area Business (no physical shopfront)','service_area_business')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-chart-bar text-orange-600 mr-2"></i>Campaign Goals & Reporting</div>
+      <div class="section-title"><i class="fas fa-chart-bar text-violet-600 mr-2"></i>Campaign Goals & Reporting</div>
       \${select('Reporting Frequency Preference','reporting_frequency',[{v:'weekly',l:'Weekly'},{v:'monthly',l:'Monthly'},{v:'quarterly',l:'Quarterly'}])}
       \${field('Reporting Contact Name','reporting_contact_name','text','Who receives reports?')}
       \${field('Reporting Contact Email','reporting_contact_email','email')}
@@ -1216,7 +1226,7 @@ function getStepHTML(key, d) {
       \${field('Lead Generation Goal','kpi_lead_volume_target','text','e.g. 20 qualified enquiries per month')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-cog text-orange-600 mr-2"></i>Technical Details</div>
+      <div class="section-title"><i class="fas fa-cog text-violet-600 mr-2"></i>Technical Details</div>
       \${field('Sitemap URL','sitemap_url','url','e.g. https://yoursite.com/sitemap.xml')}
       \${select('CMS Platform','cms_platform',[{v:'wordpress',l:'WordPress'},{v:'shopify',l:'Shopify'},{v:'wix',l:'Wix'},{v:'squarespace',l:'Squarespace'},{v:'webflow',l:'Webflow'},{v:'custom',l:'Custom Built'},{v:'other',l:'Other'}])}
       \${field('Hosting Provider','hosting_provider_seo','text','e.g. WP Engine, SiteGround, Kinsta')}
@@ -1227,12 +1237,12 @@ function getStepHTML(key, d) {
 
   if (key === 'social') return \`
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-share-alt text-orange-600 mr-2"></i>Active Social Platforms</div>
+      <div class="section-title"><i class="fas fa-share-alt text-violet-600 mr-2"></i>Active Social Platforms</div>
       \${chips('Platforms Currently Active','platforms_active',['Facebook','Instagram','LinkedIn','Twitter / X','TikTok','YouTube','Pinterest','Google Business'])}
       \${chips('Platforms to Grow','platforms_to_grow',['Facebook','Instagram','LinkedIn','Twitter / X','TikTok','YouTube','Pinterest'],'Where should we focus growth efforts?')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-at text-orange-600 mr-2"></i>Account Handles & URLs</div>
+      <div class="section-title"><i class="fas fa-at text-violet-600 mr-2"></i>Account Handles & URLs</div>
       \${field('Facebook Page URL','facebook_page_url','url')}
       \${field('Instagram Handle','instagram_handle','text','@yourbusiness')}
       \${field('LinkedIn Company Page URL','linkedin_company_url','url')}
@@ -1241,7 +1251,7 @@ function getStepHTML(key, d) {
       \${field('YouTube Channel URL','youtube_channel_url','url')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-calendar-alt text-orange-600 mr-2"></i>Content Strategy</div>
+      <div class="section-title"><i class="fas fa-calendar-alt text-violet-600 mr-2"></i>Content Strategy</div>
       \${chips('Content Pillars (main topics to post about)','content_pillars',['Educational Tips','Behind the Scenes','Client Success Stories','Product / Service Features','Industry News','Community & Local','Team & Culture','Promotions / Offers','FAQs','How-To Guides'],'Select 4–6 that best represent your brand')}
       \${select('Preferred Posting Frequency','posting_frequency',[{v:'daily',l:'Daily'},{v:'5x_week',l:'5x per week'},{v:'3-4x_week',l:'3–4x per week'},{v:'2-3x_week',l:'2–3x per week'},{v:'weekly',l:'Once per week'}])}
       \${select('Social Caption Length','social_caption_length_social',[{v:'short',l:'Short & punchy'},{v:'medium',l:'Medium (3–5 sentences)'},{v:'long',l:'Long-form storytelling'}])}
@@ -1286,7 +1296,7 @@ function getStepHTML(key, d) {
       \${checkbox('Multi-Language Support Required','multi_language_required')}
     </div>
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-file-upload text-orange-600 mr-2"></i>Content & Assets</div>
+      <div class="section-title"><i class="fas fa-file-upload text-violet-600 mr-2"></i>Content & Assets</div>
       \${checkbox('Logo files will be provided by client','logo_files_provided')}
       \${checkbox('Brand guidelines / style guide will be provided','brand_guidelines_provided')}
       \${checkbox('Website copy will be written by client','copy_provided')}
@@ -1325,13 +1335,17 @@ function getLoginPageHTML(): string {
   <title>Sign In – Digital Search Group</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap');
     @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+    body { font-family: 'Montserrat', system-ui, sans-serif; }
+    h1, h2, h3 { font-family: 'Maven Pro', 'Montserrat', system-ui, sans-serif; }
     .fade-up { animation: fadeUp 0.4s ease both }
-    input:focus { outline: none; border-color: #e85d00; box-shadow: 0 0 0 3px rgba(232,93,0,0.12) }
+    input:focus { outline: none; border-color: #7C5CFC; box-shadow: 0 0 0 3px rgba(124,92,252,0.12) }
     .btn-login { transition: all 0.15s; }
-    .btn-login:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(232,93,0,0.35) }
+    .btn-login:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(124,92,252,0.4) }
     .btn-login:active { transform: translateY(0) }
     .btn-login:disabled { opacity: 0.65; cursor: not-allowed }
   </style>
@@ -1339,13 +1353,13 @@ function getLoginPageHTML(): string {
 <body class="min-h-screen flex items-center justify-center p-4" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%)">
 
   <!-- DSG Background pattern -->
-  <div class="fixed inset-0 pointer-events-none" style="background-image:radial-gradient(circle at 25% 25%, rgba(232,93,0,0.1) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(232,93,0,0.05) 0%, transparent 50%)"></div>
+  <div class="fixed inset-0 pointer-events-none" style="background-image:radial-gradient(circle at 25% 25%, rgba(124,92,252,0.1) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(124,92,252,0.05) 0%, transparent 50%)"></div>
 
   <div class="w-full max-w-sm fade-up">
 
     <!-- Logo -->
     <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg" style="background:#e85d00; box-shadow: 0 8px 32px rgba(232,93,0,0.4)">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg" style="background:#7C5CFC; box-shadow: 0 8px 32px rgba(124,92,252,0.4)">
         <span style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-2px;font-family:system-ui">DSG</span>
       </div>
       <h1 class="text-white text-2xl font-bold tracking-tight">Digital Search Group</h1>
@@ -1387,7 +1401,7 @@ function getLoginPageHTML(): string {
         </div>
 
         <button type="submit" id="loginBtn"
-          class="btn-login w-full text-white font-bold py-3 rounded-xl text-sm shadow-md" style="background:#e85d00">
+          class="btn-login w-full text-white font-bold py-3 rounded-xl text-sm shadow-md" style="background:#7C5CFC">
           <i class="fas fa-sign-in-alt mr-2"></i>Sign In
         </button>
       </form>
