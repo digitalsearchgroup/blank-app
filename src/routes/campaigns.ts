@@ -76,12 +76,25 @@ campaignsRoutes.put('/:id', async (c) => {
   const id = c.req.param('id')
   const db = c.env.DB
   const body = await c.req.json()
-  const { name, campaign_type, status, start_date, end_date, monthly_investment, target_locations, goals, notes } = body
+
+  const existing = await db.prepare('SELECT * FROM campaigns WHERE id = ?').bind(id).first() as any
+  if (!existing) return c.json({ error: 'Campaign not found' }, 404)
 
   await db.prepare(`
     UPDATE campaigns SET name=?, campaign_type=?, status=?, start_date=?, end_date=?, monthly_investment=?, target_locations=?, goals=?, notes=?, updated_at=?
     WHERE id=?
-  `).bind(name, campaign_type, status, start_date, end_date || null, monthly_investment, target_locations, goals, notes, new Date().toISOString(), id).run()
+  `).bind(
+    body.name ?? existing.name,
+    body.campaign_type ?? existing.campaign_type,
+    body.status ?? existing.status,
+    body.start_date ?? existing.start_date,
+    body.end_date ?? existing.end_date ?? null,
+    body.monthly_investment ?? existing.monthly_investment,
+    body.target_locations ?? existing.target_locations ?? null,
+    body.goals ?? existing.goals ?? null,
+    body.notes ?? existing.notes ?? null,
+    new Date().toISOString(), id
+  ).run()
 
   return c.json({ message: 'Campaign updated' })
 })
@@ -89,6 +102,24 @@ campaignsRoutes.put('/:id', async (c) => {
 campaignsRoutes.delete('/:id', async (c) => {
   const id = c.req.param('id')
   const db = c.env.DB
+
+  // Cascade delete related records (SQLite may not enforce FK cascades)
+  await db.prepare('DELETE FROM keywords WHERE campaign_id = ?').bind(id).run()
+  await db.prepare('DELETE FROM rank_history WHERE campaign_id = ?').bind(id).run()
+  await db.prepare('DELETE FROM content_items WHERE campaign_id = ?').bind(id).run()
+  await db.prepare('DELETE FROM social_posts WHERE campaign_id = ?').bind(id).run()
+  await db.prepare('DELETE FROM press_releases WHERE campaign_id = ?').bind(id).run()
+  await db.prepare('DELETE FROM llm_prompts WHERE campaign_id = ?').bind(id).run()
+  await db.prepare('DELETE FROM llm_mention_history WHERE campaign_id = ?').bind(id).run()
+  await db.prepare('DELETE FROM reports WHERE campaign_id = ?').bind(id).run()
+  await db.prepare('DELETE FROM wordpress_projects WHERE campaign_id = ?').bind(id).run()
+  // Delete campaign plan tasks, then plans
+  const plans = await db.prepare('SELECT id FROM campaign_plans WHERE campaign_id = ?').bind(id).all()
+  for (const plan of (plans.results as any[])) {
+    await db.prepare('DELETE FROM campaign_plan_tasks WHERE plan_id = ?').bind(plan.id).run()
+  }
+  await db.prepare('DELETE FROM campaign_plans WHERE campaign_id = ?').bind(id).run()
+
   await db.prepare('DELETE FROM campaigns WHERE id = ?').bind(id).run()
   return c.json({ message: 'Campaign deleted' })
 })

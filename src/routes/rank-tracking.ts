@@ -60,9 +60,21 @@ rankTrackingRoutes.get('/campaign/:campaignId', async (c) => {
   return c.json(summary)
 })
 
+// POST track rankings — accepts both /track/:campaignId and /track-campaign (body: {campaign_id})
+rankTrackingRoutes.post('/track-campaign', async (c) => {
+  const body = await c.req.json().catch(() => ({})) as any
+  const campaignId = body.campaign_id?.toString()
+  if (!campaignId) return c.json({ error: 'campaign_id required' }, 400)
+  return doRankTracking(c, campaignId)
+})
+
 // POST track rankings for a campaign using DataForSEO
 rankTrackingRoutes.post('/track/:campaignId', async (c) => {
   const campaignId = c.req.param('campaignId')
+  return doRankTracking(c, campaignId)
+})
+
+async function doRankTracking(c: any, campaignId: string) {
   const db = c.env.DB
   const login = c.env.DATAFORSEO_LOGIN
   const password = c.env.DATAFORSEO_PASSWORD
@@ -162,7 +174,7 @@ rankTrackingRoutes.post('/track/:campaignId', async (c) => {
   }
 
   return c.json({ tracked: tracked.length, results: tracked, errors })
-})
+}
 
 // GET rank history for a keyword
 rankTrackingRoutes.get('/history/:keywordId', async (c) => {

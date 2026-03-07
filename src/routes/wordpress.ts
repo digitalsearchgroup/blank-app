@@ -49,6 +49,13 @@ wordpressRoutes.post('/', async (c) => {
     return c.json({ error: 'client_id and project_name are required' }, 400)
   }
 
+  // Map frontend project_type values to valid schema values
+  const projectTypeMap: Record<string, string> = {
+    'new_build': 'new_site', 'new_website': 'new_site', 'rebuild': 'redesign'
+  }
+  const rawType = body.project_type || 'new_site'
+  const projectType = projectTypeMap[rawType] || rawType
+
   const result = await db.prepare(`
     INSERT INTO wordpress_projects (
       client_id, campaign_id, project_name, project_type, status,
@@ -58,14 +65,14 @@ wordpressRoutes.post('/', async (c) => {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     body.client_id, body.campaign_id || null, body.project_name,
-    body.project_type || 'new_site', body.status || 'scoping',
-    body.site_url || '', body.staging_url || '',
-    body.wordpress_version || '', body.theme_used || '',
-    body.page_builder || 'elementor', body.hosting_provider || '',
-    body.monthly_maintenance || 0, body.project_budget || 0,
+    projectType, body.status || 'scoping',
+    body.site_url || null, body.staging_url || null,
+    body.wordpress_version || null, body.theme_used || null,
+    body.page_builder || 'elementor', body.hosting_provider || null,
+    body.monthly_maintenance || 0, body.project_budget || body.budget || 0,
     body.hourly_rate || 150, body.hours_quoted || 0,
     body.go_live_date || null, body.start_date || null,
-    body.brief || '', body.notes || '', body.login_url || ''
+    body.brief || null, body.notes || null, body.login_url || null
   ).run()
 
   const projectId = result.meta.last_row_id as number
@@ -100,6 +107,13 @@ wordpressRoutes.put('/:id', async (c) => {
   const body = await c.req.json()
   const now = new Date().toISOString()
 
+  const existing = await db.prepare('SELECT * FROM wordpress_projects WHERE id = ?').bind(id).first() as any
+  if (!existing) return c.json({ error: 'Project not found' }, 404)
+
+  const projectTypeMap: Record<string, string> = { 'new_build': 'new_site', 'new_website': 'new_site', 'rebuild': 'redesign' }
+  const rawType = body.project_type ?? existing.project_type
+  const projectType = projectTypeMap[rawType] || rawType
+
   await db.prepare(`
     UPDATE wordpress_projects SET
       project_name=?, project_type=?, status=?,
@@ -110,14 +124,27 @@ wordpressRoutes.put('/:id', async (c) => {
       brief=?, notes=?, login_url=?, updated_at=?
     WHERE id=?
   `).bind(
-    body.project_name, body.project_type, body.status,
-    body.site_url || '', body.staging_url || '',
-    body.wordpress_version || '', body.theme_used || '',
-    body.page_builder || '', body.hosting_provider || '',
-    body.monthly_maintenance || 0, body.project_budget || 0,
-    body.hourly_rate || 150, body.hours_quoted || 0, body.hours_used || 0,
-    body.go_live_date || null, body.start_date || null, body.end_date || null,
-    body.brief || '', body.notes || '', body.login_url || '', now, id
+    body.project_name ?? existing.project_name,
+    projectType,
+    body.status ?? existing.status,
+    body.site_url ?? existing.site_url ?? null,
+    body.staging_url ?? existing.staging_url ?? null,
+    body.wordpress_version ?? existing.wordpress_version ?? null,
+    body.theme_used ?? existing.theme_used ?? null,
+    body.page_builder ?? existing.page_builder ?? null,
+    body.hosting_provider ?? existing.hosting_provider ?? null,
+    body.monthly_maintenance ?? existing.monthly_maintenance ?? 0,
+    body.project_budget ?? body.budget ?? existing.project_budget ?? 0,
+    body.hourly_rate ?? existing.hourly_rate ?? 150,
+    body.hours_quoted ?? existing.hours_quoted ?? 0,
+    body.hours_used ?? existing.hours_used ?? 0,
+    body.go_live_date ?? existing.go_live_date ?? null,
+    body.start_date ?? existing.start_date ?? null,
+    body.end_date ?? existing.end_date ?? null,
+    body.brief ?? existing.brief ?? null,
+    body.notes ?? existing.notes ?? null,
+    body.login_url ?? existing.login_url ?? null,
+    now, id
   ).run()
 
   return c.json({ message: 'WordPress project updated' })

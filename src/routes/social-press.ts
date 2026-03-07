@@ -81,6 +81,9 @@ socialRoutes.put('/:id', async (c) => {
   const db = c.env.DB
   const body = await c.req.json()
 
+  const existing = await db.prepare('SELECT * FROM social_posts WHERE id = ?').bind(id).first() as any
+  if (!existing) return c.json({ error: 'Social post not found' }, 404)
+
   await db.prepare(`
     UPDATE social_posts SET
       platform=?, post_type=?, caption=?, hashtags=?,
@@ -90,15 +93,23 @@ socialRoutes.put('/:id', async (c) => {
       likes=?, comments=?, shares=?, reach=?, impressions=?
     WHERE id=?
   `).bind(
-    body.platform, body.post_type || 'organic',
-    body.caption || '', body.hashtags || '',
-    body.image_url || '', body.video_url || '', body.link_url || '',
-    body.scheduled_at || null,
-    body.status || 'draft',
-    body.notes || '',
+    body.platform ?? existing.platform,
+    body.post_type ?? existing.post_type ?? 'organic',
+    body.caption ?? existing.caption ?? '',
+    body.hashtags ?? existing.hashtags ?? '',
+    body.image_url ?? existing.image_url ?? null,
+    body.video_url ?? existing.video_url ?? null,
+    body.link_url ?? existing.link_url ?? null,
+    body.scheduled_at ?? existing.scheduled_at ?? null,
+    body.status ?? existing.status ?? 'draft',
+    body.notes ?? existing.notes ?? '',
     ...(body.status === 'published' ? [new Date().toISOString()] : []),
-    body.likes || 0, body.comments || 0, body.shares || 0,
-    body.reach || 0, body.impressions || 0, id
+    body.likes ?? existing.likes ?? 0,
+    body.comments ?? existing.comments ?? 0,
+    body.shares ?? existing.shares ?? 0,
+    body.reach ?? existing.reach ?? 0,
+    body.impressions ?? existing.impressions ?? 0,
+    id
   ).run()
 
   return c.json({ message: 'Social post updated' })
@@ -198,6 +209,9 @@ pressReleaseRoutes.put('/:id', async (c) => {
   const body = await c.req.json()
   const now = new Date().toISOString()
 
+  const existing = await db.prepare('SELECT * FROM press_releases WHERE id = ?').bind(id).first() as any
+  if (!existing) return c.json({ error: 'Press release not found' }, 404)
+
   await db.prepare(`
     UPDATE press_releases SET
       headline=?, subheadline=?, body_text=?,
@@ -207,13 +221,21 @@ pressReleaseRoutes.put('/:id', async (c) => {
       published_urls=?, media_coverage=?, updated_at=?
     WHERE id=?
   `).bind(
-    body.headline, body.subheadline || '', body.body_text || '',
-    body.quote || '', body.quote_attribution || '',
-    body.boilerplate || '', body.contact_info || '',
-    body.distribution_list || '', body.distribution_date || null,
-    body.embargo_date || null, body.target_publications || '',
-    body.status || 'draft', body.seo_keywords || '',
-    body.published_urls || '', body.media_coverage || '',
+    body.headline ?? existing.headline,
+    body.subheadline ?? existing.subheadline ?? '',
+    body.body_text ?? existing.body_text ?? '',
+    body.quote ?? existing.quote ?? '',
+    body.quote_attribution ?? existing.quote_attribution ?? '',
+    body.boilerplate ?? existing.boilerplate ?? '',
+    body.contact_info ?? existing.contact_info ?? '',
+    body.distribution_list ?? existing.distribution_list ?? '',
+    body.distribution_date ?? existing.distribution_date ?? null,
+    body.embargo_date ?? existing.embargo_date ?? null,
+    body.target_publications ?? existing.target_publications ?? '',
+    body.status ?? existing.status ?? 'draft',
+    body.seo_keywords ?? existing.seo_keywords ?? '',
+    body.published_urls ?? existing.published_urls ?? '',
+    body.media_coverage ?? existing.media_coverage ?? '',
     now, id
   ).run()
 

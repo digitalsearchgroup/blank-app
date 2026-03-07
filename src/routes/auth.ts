@@ -313,9 +313,17 @@ authRoutes.put('/users/:id', async (c) => {
     ).bind(hash, salt, now, id).run()
   }
 
+  const existingUser = await db.prepare('SELECT * FROM team_users WHERE id = ?').bind(id).first() as any
+
   await db.prepare(`
     UPDATE team_users SET full_name=?, role=?, is_active=?, avatar_colour=?, updated_at=? WHERE id=?
-  `).bind(body.full_name, body.role, body.is_active ?? 1, body.avatar_colour || '#2563eb', now, id).run()
+  `).bind(
+    body.full_name ?? existingUser?.full_name,
+    body.role ?? existingUser?.role,
+    body.is_active ?? existingUser?.is_active ?? 1,
+    body.avatar_colour ?? existingUser?.avatar_colour ?? '#2563eb',
+    now, id
+  ).run()
 
   await db.prepare(
     "INSERT INTO team_audit_log (user_id, action, target_type, target_id, description) VALUES (?, 'update_user', 'user', ?, ?)"

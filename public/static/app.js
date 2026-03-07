@@ -47,61 +47,69 @@ function can(permission) {
 // ---- Toast ----
 function toast(msg, type = 'success') {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = `toast ${type === 'error' ? 'bg-red-700' : type === 'warning' ? 'bg-yellow-700' : 'bg-gray-900'} text-white px-5 py-3 rounded-xl shadow-lg text-sm show`;
+  const icon = document.getElementById('toastIcon');
+  const msgEl = document.getElementById('toastMsg');
+  if (!el) return;
+  if (icon) {
+    if (type === 'error') { icon.className = 'fas fa-circle-xmark'; icon.style.color = '#f87171'; }
+    else if (type === 'warning') { icon.className = 'fas fa-triangle-exclamation'; icon.style.color = '#fbbf24'; }
+    else { icon.className = 'fas fa-circle-check'; icon.style.color = '#34d474'; }
+  }
+  if (msgEl) msgEl.textContent = msg;
+  el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3500);
 }
 
 // ---- Helpers ----
 function statusBadge(status) {
   const map = {
-    active: ['bg-green-100 text-green-700', 'Active'],
-    prospect: ['bg-yellow-100 text-yellow-700', 'Prospect'],
-    paused: ['bg-gray-100 text-gray-500', 'Paused'],
-    churned: ['bg-red-100 text-red-600', 'Churned'],
-    archived: ['bg-slate-200 text-slate-600', '🗄 Archived'],
-    draft: ['bg-gray-100 text-gray-600', 'Draft'],
-    sent: ['bg-blue-100 text-blue-700', 'Sent'],
-    approved: ['bg-green-100 text-green-700', 'Approved'],
-    rejected: ['bg-red-100 text-red-600', 'Declined'],
-    expired: ['bg-violet-100 text-violet-600', 'Expired'],
-    planned: ['bg-gray-100 text-gray-500', 'Planned'],
-    briefed: ['bg-purple-100 text-purple-600', 'Briefed'],
-    in_progress: ['bg-yellow-100 text-yellow-700', 'In Progress'],
-    review: ['bg-indigo-100 text-indigo-600', 'In Review'],
-    published: ['bg-green-100 text-green-700', 'Published'],
-    cancelled: ['bg-red-100 text-red-400', 'Cancelled'],
-    distributed: ['bg-blue-100 text-blue-700', 'Distributed'],
-    scoping: ['bg-gray-100 text-gray-600', 'Scoping'],
-    quoted: ['bg-yellow-100 text-yellow-700', 'Quoted'],
-    client_review: ['bg-indigo-100 text-indigo-600', 'Client Review'],
-    revisions: ['bg-violet-100 text-violet-600', 'Revisions'],
-    completed: ['bg-green-100 text-green-700', 'Completed'],
-    on_hold: ['bg-gray-100 text-gray-500', 'On Hold'],
-    scheduled: ['bg-blue-100 text-blue-700', 'Scheduled'],
-    live: ['bg-green-100 text-green-700', 'Live'],
-    high: ['bg-red-100 text-red-600', 'High'],
-    medium: ['bg-yellow-100 text-yellow-700', 'Medium'],
-    low: ['bg-gray-100 text-gray-500', 'Low'],
+    active:        ['badge-green',  'fa-circle',        'Active'],
+    prospect:      ['badge-amber',  'fa-clock',         'Prospect'],
+    paused:        ['badge-slate',  'fa-pause',         'Paused'],
+    churned:       ['badge-red',    'fa-xmark',         'Churned'],
+    archived:      ['badge-slate',  'fa-box-archive',   'Archived'],
+    draft:         ['badge-slate',  'fa-pencil',        'Draft'],
+    sent:          ['badge-blue',   'fa-paper-plane',   'Sent'],
+    approved:      ['badge-green',  'fa-check',         'Approved'],
+    rejected:      ['badge-red',    'fa-xmark',         'Declined'],
+    expired:       ['badge-purple', 'fa-hourglass-end', 'Expired'],
+    planned:       ['badge-slate',  'fa-calendar',      'Planned'],
+    briefed:       ['badge-purple', 'fa-file-lines',    'Briefed'],
+    in_progress:   ['badge-amber',  'fa-spinner',       'In Progress'],
+    review:        ['badge-blue',   'fa-eye',           'In Review'],
+    published:     ['badge-green',  'fa-globe',         'Published'],
+    cancelled:     ['badge-red',    'fa-ban',           'Cancelled'],
+    distributed:   ['badge-blue',   'fa-satellite-dish','Distributed'],
+    scoping:       ['badge-slate',  'fa-magnifying-glass','Scoping'],
+    quoted:        ['badge-amber',  'fa-file-invoice',  'Quoted'],
+    client_review: ['badge-blue',   'fa-user-clock',    'Client Review'],
+    revisions:     ['badge-purple', 'fa-rotate',        'Revisions'],
+    completed:     ['badge-green',  'fa-circle-check',  'Completed'],
+    on_hold:       ['badge-slate',  'fa-hand',          'On Hold'],
+    scheduled:     ['badge-blue',   'fa-calendar-check','Scheduled'],
+    live:          ['badge-green',  'fa-signal',        'Live'],
+    high:          ['badge-red',    'fa-arrow-up',      'High'],
+    medium:        ['badge-amber',  'fa-minus',         'Medium'],
+    low:           ['badge-slate',  'fa-arrow-down',    'Low'],
+    not_started:   ['badge-slate',  'fa-circle',        'Not Started'],
+    in_review:     ['badge-blue',   'fa-eye',           'In Review'],
   };
-  const [cls, label] = map[status] || ['bg-gray-100 text-gray-500', status || 'Unknown'];
-  return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}">${label}</span>`;
+  const [cls, ic, label] = map[status] || ['badge-slate', 'fa-circle', status || 'Unknown'];
+  return `<span class="badge ${cls}"><i class="fas ${ic}" style="font-size:9px"></i>${label}</span>`;
 }
 
 function rankChange(current, previous) {
-  if (!current || !previous) return `<span class="text-gray-400">–</span>`;
+  if (!current || !previous) return `<span style="color:#b0aac8">–</span>`;
   const diff = previous - current;
-  if (diff > 0) return `<span class="text-green-600 font-medium">↑${diff}</span>`;
-  if (diff < 0) return `<span class="text-red-500 font-medium">↓${Math.abs(diff)}</span>`;
-  return `<span class="text-gray-400">→</span>`;
+  if (diff > 0) return `<span class="rank-up">↑${diff}</span>`;
+  if (diff < 0) return `<span class="rank-down">↓${Math.abs(diff)}</span>`;
+  return `<span style="color:#b0aac8">→</span>`;
 }
 
 function rankBadge(pos) {
-  if (!pos) return `<span class="text-gray-400 text-sm">–</span>`;
-  if (pos <= 3) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-600 text-white font-bold text-sm">${pos}</span>`;
-  if (pos <= 10) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-violet-500 text-white font-bold text-sm">${pos}</span>`;
-  if (pos <= 30) return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-500 text-white font-bold text-sm">${pos}</span>`;
-  return `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-600 font-bold text-sm">${pos}</span>`;
+  if (!pos) return `<span style="color:#b0aac8;font-size:13px">–</span>`;
+  const bg = pos <= 3 ? '#16a34a' : pos <= 10 ? '#7C5CFC' : pos <= 30 ? '#d97706' : '#94a3b8';
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:${bg};color:#fff;font-weight:800;font-size:12px;font-family:'Maven Pro',sans-serif">${pos}</span>`;
 }
 
 function ago(dateStr) {
@@ -238,7 +246,11 @@ function onCountryChange(country) {
 }
 
 function loading() {
-  return `<div class="flex items-center justify-center h-64"><div class="text-center text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><p class="text-sm">Loading...</p></div></div>`;
+  return `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:240px;gap:14px">
+      <div style="width:44px;height:44px;border-radius:50%;border:3px solid #ede9f8;border-top-color:#7C5CFC;animation:spin 0.7s linear infinite"></div>
+      <div style="font-size:13px;color:#9892b0;font-weight:500">Loading…</div>
+    </div>`;
 }
 
 function openModal(id) { document.getElementById(id)?.classList.remove('hidden'); }
@@ -256,12 +268,14 @@ function navigate(page, params = {}) {
 function render() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="flex h-screen overflow-hidden">
+    <div class="app-layout">
       ${renderSidebar()}
-      <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="main-area">
         ${renderTopBar()}
-        <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
-          ${renderPage()}
+        <main class="page-content">
+          <div class="page-fade">
+            ${renderPage()}
+          </div>
         </main>
       </div>
     </div>
@@ -271,64 +285,79 @@ function render() {
 
 function renderSidebar() {
   const u = state.currentUser;
-  // Build nav – payments and team are PM only
   const allLinks = [
-    { id: 'dashboard', icon: 'fa-gauge-high', label: 'Dashboard', pmOnly: false },
-    { id: 'clients', icon: 'fa-users', label: 'Clients', pmOnly: false },
-    { id: 'campaigns', icon: 'fa-rocket', label: 'Campaigns', pmOnly: false },
-    { id: 'campaign_plans', icon: 'fa-tasks', label: 'Task Board', pmOnly: false },
-    { id: 'proposals', icon: 'fa-file-contract', label: 'Proposals', pmOnly: false },
-    { id: 'payments', icon: 'fa-credit-card', label: 'Billing & Payments', pmOnly: true },
-    { id: 'keywords', icon: 'fa-magnifying-glass-chart', label: 'Rank Tracking', pmOnly: false },
-    { id: 'llm', icon: 'fa-robot', label: 'AI Visibility', pmOnly: false },
-    { id: 'content', icon: 'fa-pen-nib', label: 'Content', pmOnly: false },
-    { id: 'social', icon: 'fa-share-nodes', label: 'Social Media', pmOnly: false },
-    { id: 'press', icon: 'fa-newspaper', label: 'Press Releases', pmOnly: false },
-    { id: 'wordpress', icon: 'fa-wordpress', label: 'WordPress Projects', pmOnly: false },
-    { id: 'reports', icon: 'fa-chart-line', label: 'Reports', pmOnly: false },
-    { id: 'dataforseo', icon: 'fa-database', label: 'DataForSEO', pmOnly: false },
-    { id: 'onboarding', icon: 'fa-clipboard-list', label: 'Onboarding', pmOnly: false },
-    { id: 'team', icon: 'fa-user-shield', label: 'Team Management', pmOnly: true },
+    { id: 'dashboard',      icon: 'fa-gauge-high',            label: 'Dashboard',            section: null,      pmOnly: false },
+    { id: 'clients',        icon: 'fa-users',                 label: 'Clients',               section: 'CRM',     pmOnly: false },
+    { id: 'campaigns',      icon: 'fa-rocket',                label: 'Campaigns',             section: null,      pmOnly: false },
+    { id: 'campaign_plans', icon: 'fa-list-check',            label: 'Task Board',            section: null,      pmOnly: false },
+    { id: 'proposals',      icon: 'fa-file-contract',         label: 'Proposals',             section: null,      pmOnly: false },
+    { id: 'payments',       icon: 'fa-credit-card',           label: 'Billing & Payments',    section: null,      pmOnly: true  },
+    { id: 'keywords',       icon: 'fa-magnifying-glass-chart',label: 'Rank Tracking',         section: 'SEO',     pmOnly: false },
+    { id: 'llm',            icon: 'fa-robot',                 label: 'AI Visibility',         section: null,      pmOnly: false },
+    { id: 'content',        icon: 'fa-pen-nib',               label: 'Content',               section: null,      pmOnly: false },
+    { id: 'social',         icon: 'fa-share-nodes',           label: 'Social Media',          section: 'MEDIA',   pmOnly: false },
+    { id: 'press',          icon: 'fa-newspaper',             label: 'Press Releases',        section: null,      pmOnly: false },
+    { id: 'wordpress',      icon: 'fa-wordpress',             label: 'WordPress Projects',    section: 'DEV',     pmOnly: false },
+    { id: 'reports',        icon: 'fa-chart-line',            label: 'Reports',               section: 'TOOLS',   pmOnly: false },
+    { id: 'dataforseo',     icon: 'fa-database',              label: 'DataForSEO',            section: null,      pmOnly: false },
+    { id: 'onboarding',     icon: 'fa-clipboard-list',        label: 'Onboarding',            section: null,      pmOnly: false },
+    { id: 'team',           icon: 'fa-user-shield',           label: 'Team Management',       section: 'ADMIN',   pmOnly: true  },
   ];
   const links = allLinks.filter(l => !l.pmOnly || isPM());
   const initials = u?.avatar_initials || (u?.full_name?.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()) || '?';
-  const avatarColour = u?.avatar_colour || '#2563eb';
+  const avatarColour = u?.avatar_colour || '#7C5CFC';
   const roleLabel = u?.role === 'project_manager' ? 'Project Manager' : 'Project Executor';
+  const isLive = state.dataforseoStatus?.connected;
+
+  let navHtml = '';
+  let lastSection = null;
+  for (const l of links) {
+    if (l.section && l.section !== lastSection) {
+      navHtml += `<div class="section-label">${l.section}</div>`;
+      lastSection = l.section;
+    }
+    const active = state.page === l.id;
+    navHtml += `<button onclick="navigate('${l.id}')" class="sb-link${active ? ' active' : ''}">
+      <i class="fas ${l.icon} sb-icon"></i>
+      <span>${l.label}</span>
+    </button>`;
+  }
 
   return `
-    <aside class="w-64 flex flex-col flex-shrink-0 overflow-y-auto" style="background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)">
-      <div class="p-5 flex-shrink-0" style="border-bottom: 1px solid rgba(255,255,255,0.08)">
-        <div class="flex items-center gap-3">
-          <div class="dsg-logo-mark">DSG</div>
-          <div>
-            <div class="text-white font-bold text-sm leading-tight">Digital Search</div>
-            <div class="text-xs" style="color: rgba(255,255,255,0.45)">Campaign Manager</div>
-          </div>
+    <aside class="sidebar">
+      <!-- Logo -->
+      <div class="sb-logo">
+        <img
+          src="https://www.digitalsearchgroup.co.uk/wp-content/uploads/2023/09/Logo-1.png.webp"
+          alt="Digital Search Group"
+          class="sb-logo-img"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='block'"
+        >
+        <div class="sb-logo-fallback">
+          <span style="color:#a07dff">DIGITAL</span> SEARCH
+          <div style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.35);letter-spacing:0.1em;margin-top:1px">CAMPAIGN MANAGER</div>
         </div>
+        <div style="font-size:9.5px;color:rgba(255,255,255,0.28);margin-top:6px;letter-spacing:0.06em;text-transform:uppercase">Campaign Manager</div>
       </div>
-      <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        ${links.map(l => `
-          <button onclick="navigate('${l.id}')" class="flex items-center gap-3 px-4 py-2.5 rounded-xl w-full text-left transition cursor-pointer ${state.page === l.id ? 'text-white' : 'text-slate-300 hover:text-white hover:bg-white/10'}" style="${state.page === l.id ? 'background:rgba(124,92,252,0.25);border-left:3px solid #7C5CFC;' : ''}">
-            <i class="fas ${l.icon} w-4 text-center" style="color:inherit"></i>
-            <span class="text-sm" style="color:inherit">${l.label}</span>
-          </button>
-        `).join('')}
-      </nav>
-      <div class="p-3 flex-shrink-0 space-y-2" style="border-top: 1px solid rgba(255,255,255,0.08)">
-        <div class="flex items-center gap-2 text-xs text-slate-400 px-1">
-          <div class="w-2 h-2 rounded-full ${state.dataforseoStatus?.connected ? 'bg-green-400' : 'bg-yellow-400'}"></div>
-          DataForSEO: ${state.dataforseoStatus?.connected ? '<span class="text-green-300">Live</span>' : '<span class="text-yellow-300">Demo</span>'}
+
+      <!-- Nav -->
+      <nav class="sb-nav">${navHtml}</nav>
+
+      <!-- Footer -->
+      <div class="sb-footer">
+        <div class="sb-status">
+          <div class="sb-status-dot" style="background:${isLive ? '#4ade80' : '#fbbf24'};box-shadow:0 0 6px ${isLive ? '#4ade80' : '#fbbf24'}"></div>
+          <span style="font-size:11px;color:rgba(255,255,255,0.4)">DataForSEO:&nbsp;</span>
+          <span style="font-size:11px;font-weight:600;color:${isLive ? '#4ade80' : '#fbbf24'}">${isLive ? 'Live' : 'Demo'}</span>
         </div>
-        <div class="flex items-center gap-3 bg-white/10 rounded-xl px-3 py-2.5">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:${avatarColour}">
-            ${initials}
+        <div class="sb-user">
+          <div class="sb-avatar" style="background:${avatarColour}">${initials}</div>
+          <div style="flex:1;min-width:0">
+            <div style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u?.full_name || 'Team Member'}</div>
+            <div style="color:rgba(255,255,255,0.38);font-size:10.5px;margin-top:1px">${roleLabel}</div>
           </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-white text-xs font-semibold truncate">${u?.full_name || 'Team Member'}</div>
-            <div class="text-slate-400 text-xs truncate">${roleLabel}</div>
-          </div>
-          <button onclick="handleLogout()" class="text-slate-400 hover:text-white transition flex-shrink-0" title="Sign out">
-            <i class="fas fa-sign-out-alt text-sm"></i>
+          <button onclick="handleLogout()" title="Sign out" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.35);padding:4px;flex-shrink:0;transition:color 0.15s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.35)'">
+            <i class="fas fa-right-from-bracket" style="font-size:13px"></i>
           </button>
         </div>
       </div>
@@ -355,27 +384,29 @@ function renderTopBar() {
     wordpress_detail: state.selectedWpProject?.project_name || 'WordPress Project',
   };
   const addButtons = {
-    clients: `<button onclick="navigate('new_client')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Client</button>`,
-    proposals: `<button onclick="navigate('new_proposal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Proposal</button>`,
-    campaigns: `<button onclick="openModal('new_campaign_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Campaign</button>`,
-    keywords: `<button onclick="openModal('new_keyword_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Keywords</button>`,
-    llm: `<button onclick="openModal('new_llm_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Prompt</button>`,
-    content: `<button onclick="openModal('new_content_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Content</button>`,
-    social: `<button onclick="openModal('new_social_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Post</button>`,
-    press: `<button onclick="navigate('new_press')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Press Release</button>`,
-    wordpress: `<button onclick="openModal('new_wp_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New WP Project</button>`,
-    onboarding: isPM() ? `<button onclick="openModal('new_onboarding_modal')" class="btn-primary"><i class="fas fa-plus mr-2"></i>New Onboarding</button>` : '',
-    team: isPM() ? `<button onclick="openModal('new_user_modal')" class="btn-primary"><i class="fas fa-user-plus mr-2"></i>Add Team Member</button>` : '',
+    clients: `<button onclick="navigate('new_client')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>New Client</button>`,
+    proposals: `<button onclick="navigate('new_proposal')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>New Proposal</button>`,
+    campaigns: `<button onclick="openModal('new_campaign_modal')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>New Campaign</button>`,
+    keywords: `<button onclick="openModal('new_keyword_modal')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>Add Keywords</button>`,
+    llm: `<button onclick="openModal('new_llm_modal')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>Add Prompt</button>`,
+    content: `<button onclick="openModal('new_content_modal')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>New Content</button>`,
+    social: `<button onclick="openModal('new_social_modal')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>New Post</button>`,
+    press: `<button onclick="navigate('new_press')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>New Press Release</button>`,
+    wordpress: `<button onclick="openModal('new_wp_modal')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>New WP Project</button>`,
+    onboarding: isPM() ? `<button onclick="openModal('new_onboarding_modal')" class="btn-primary btn-sm"><i class="fas fa-plus"></i>New Onboarding</button>` : '',
+    team: isPM() ? `<button onclick="openModal('new_user_modal')" class="btn-primary btn-sm"><i class="fas fa-user-plus"></i>Add Team Member</button>` : '',
   };
   const u = state.currentUser;
-  const roleChip = u ? `<span class="text-xs px-2.5 py-1 rounded-full font-semibold ${u.role === 'project_manager' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-700'}">${u.role === 'project_manager' ? 'Project Manager' : 'Project Executor'}</span>` : '';
+  const roleChip = u ? `<span class="badge ${u.role === 'project_manager' ? 'badge-purple' : 'badge-slate'}">${u.role === 'project_manager' ? 'Project Manager' : 'Project Executor'}</span>` : '';
+  const title = titles[state.page] || state.page;
+  const today = new Date().toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
   return `
-    <header class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
-      <div>
-        <h1 class="text-lg font-bold text-gray-900">${titles[state.page] || state.page}</h1>
-        <p class="text-xs text-gray-500">Digital Search Group · ${new Date().toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}</p>
+    <header class="topbar">
+      <div style="flex:1;min-width:0">
+        <div class="topbar-title">${title}</div>
+        <div class="topbar-sub">Digital Search Group &nbsp;·&nbsp; ${today}</div>
       </div>
-      <div class="flex items-center gap-3">
+      <div style="display:flex;align-items:center;gap:10px">
         ${roleChip}
         ${addButtons[state.page] || ''}
       </div>
@@ -425,72 +456,155 @@ function renderDashboard() {
   const { clients = {}, campaigns = {}, keywords = {}, content = {}, proposals = {} } = d;
   const totalMrr = d.total_mrr || clients.total_mrr_clients || clients.total_mrr || 0;
   const activeClients = d.active_clients || clients.active || 0;
+
+  const kpiTiles = [
+    {
+      icon: 'fa-magnifying-glass-chart', label: 'Keywords Tracking',
+      val: keywords.total || 0, sub: `${keywords.top10 || 0} in Top 10`,
+      iconBg: 'rgba(124,92,252,0.12)', iconColor: '#7C5CFC',
+      accentColor: '#7C5CFC', page: 'keywords'
+    },
+    {
+      icon: 'fa-robot', label: 'AI Prompts Tracked',
+      val: d.llm_stats?.total_prompts || 0, sub: 'LLM visibility active',
+      iconBg: 'rgba(62,207,207,0.12)', iconColor: '#0d9488',
+      accentColor: '#0d9488', page: 'llm'
+    },
+    {
+      icon: 'fa-pen-nib', label: 'Content in Pipeline',
+      val: content.in_pipeline || 0, sub: `${content.published || 0} published`,
+      iconBg: 'rgba(52,211,153,0.12)', iconColor: '#059669',
+      accentColor: '#059669', page: 'content'
+    },
+    {
+      icon: 'fa-file-contract', label: 'Pending Proposals',
+      val: proposals.pending || 0, sub: `${proposals.approved || 0} approved total`,
+      iconBg: 'rgba(251,191,36,0.12)', iconColor: '#d97706',
+      accentColor: '#d97706', page: 'proposals'
+    },
+  ];
+
   return `
-    <div class="space-y-6">
-      <div class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 text-white">
-        <p class="text-slate-300 text-sm font-medium">Total Monthly Recurring Revenue</p>
-        <div class="text-4xl font-bold mt-1">${fmtCurrency(totalMrr)}</div>
-        <div class="flex gap-6 mt-4 text-sm text-slate-300 flex-wrap">
-          <span><strong class="text-white">${activeClients}</strong> Active Clients</span>
-          <span><strong class="text-white">${clients.prospects || 0}</strong> Prospects</span>
-          <span><strong class="text-white">${campaigns.active || 0}</strong> Active Campaigns</span>
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- ── MRR Hero Card ── -->
+      <div style="border-radius:16px;padding:28px 32px;background:linear-gradient(130deg,#1a1829 0%,#14112a 50%,#0e1628 100%);border:1px solid rgba(124,92,252,0.2);box-shadow:0 8px 32px rgba(0,0,0,0.25),0 0 0 1px rgba(255,255,255,0.04);position:relative;overflow:hidden">
+        <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(124,92,252,0.18),transparent 70%);pointer-events:none"></div>
+        <div style="position:absolute;bottom:-30px;left:30%;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(62,207,207,0.1),transparent 70%);pointer-events:none"></div>
+        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:20px">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.4);margin-bottom:8px">Monthly Recurring Revenue</div>
+            <div style="font-family:'Maven Pro',sans-serif;font-size:clamp(36px,4vw,52px);font-weight:900;color:#fff;line-height:1;letter-spacing:-0.02em">${fmtCurrency(totalMrr)}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px">All active client contracts</div>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            ${[
+              { val: activeClients,           label: 'Active Clients',   color: '#4ade80' },
+              { val: clients.prospects || 0,  label: 'Prospects',        color: '#a07dff' },
+              { val: campaigns.active || 0,   label: 'Campaigns Active', color: '#38bdf8' },
+            ].map(s => `
+              <div style="text-align:center;padding:16px 20px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.07);min-width:90px">
+                <div style="font-family:'Maven Pro',sans-serif;font-size:28px;font-weight:900;color:${s.color};line-height:1">${s.val}</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px;text-transform:uppercase;letter-spacing:0.06em">${s.label}</div>
+              </div>`).join('')}
+          </div>
         </div>
       </div>
 
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        ${[
-          { icon: 'fa-magnifying-glass-chart', label: 'Keywords Tracking', val: keywords.total || 0, sub: `${keywords.top10 || 0} in Top 10`, color: 'blue', page: 'keywords' },
-          { icon: 'fa-robot', label: 'LLM Prompts', val: d.llm_stats?.total_prompts || 0, sub: 'AI visibility tracked', color: 'purple', page: 'llm' },
-          { icon: 'fa-pen-nib', label: 'Content In Pipeline', val: content.in_pipeline || 0, sub: `${content.published || 0} published`, color: 'green', page: 'content' },
-          { icon: 'fa-file-contract', label: 'Pending Proposals', val: proposals.pending || 0, sub: `${proposals.approved || 0} approved total`, color: 'yellow', page: 'proposals' },
-        ].map(s => `
-          <div class="card cursor-pointer hover:shadow-md transition" onclick="navigate('${s.page}')">
-            <div class="w-10 h-10 rounded-xl bg-${s.color}-100 flex items-center justify-center mb-3">
-              <i class="fas ${s.icon} text-${s.color}-600"></i>
+      <!-- ── KPI Tiles ── -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">
+        ${kpiTiles.map(s => `
+          <div class="stat-card" onclick="navigate('${s.page}')" style="cursor:pointer">
+            <div style="position:absolute;top:0;right:0;width:70px;height:70px;border-radius:0 14px 0 70%;background:${s.iconBg};opacity:0.5"></div>
+            <div class="stat-card-icon" style="background:${s.iconBg}">
+              <i class="fas ${s.icon}" style="color:${s.iconColor};font-size:17px"></i>
             </div>
-            <div class="text-2xl font-bold text-gray-900">${s.val}</div>
-            <div class="text-sm text-gray-500 mt-0.5">${s.label}</div>
-            <div class="text-xs text-gray-400 mt-1">${s.sub}</div>
-          </div>
-        `).join('')}
+            <div style="font-family:'Maven Pro',sans-serif;font-size:32px;font-weight:900;color:#1e1b30;line-height:1">${s.val}</div>
+            <div style="font-size:12.5px;font-weight:600;color:#4a4468;margin-top:4px">${s.label}</div>
+            <div style="font-size:11px;color:#9892b0;margin-top:3px">${s.sub}</div>
+            <div style="height:3px;background:${s.iconBg};border-radius:99px;margin-top:14px;overflow:hidden">
+              <div style="height:100%;width:${Math.min((s.val / Math.max(s.val,10)) * 100, 100)}%;background:${s.accentColor};border-radius:99px"></div>
+            </div>
+          </div>`).join('')}
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="card">
-          <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-file-contract text-violet-500"></i>Awaiting Approval</h3>
-          ${!(d.pending_proposals || []).length ? '<p class="text-gray-400 text-sm">No pending proposals</p>' :
-            `<div class="space-y-2">${(d.pending_proposals || []).map(p => `
-              <div class="flex items-center justify-between p-3 bg-violet-50 rounded-xl">
-                <div><p class="font-medium text-sm">${p.company_name}</p><p class="text-xs text-gray-500">${p.title} · ${fmtCurrency(p.monthly_investment)}/mo</p></div>
-                <div class="text-right">${statusBadge('sent')}<p class="text-xs text-gray-400 mt-1">Sent ${ago(p.sent_at)}</p></div>
-              </div>`).join('')}</div>`}
-        </div>
+      <!-- ── Lower panels ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
 
+        <!-- Awaiting Approval -->
         <div class="card">
-          <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-calendar text-green-500"></i>Upcoming Content Deadlines</h3>
-          ${!(d.upcoming_content || []).length ? '<p class="text-gray-400 text-sm">No upcoming content</p>' :
-            `<div class="space-y-2">${(d.upcoming_content || []).map(ci => `
-              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div><p class="font-medium text-sm">${ci.title}</p><p class="text-xs text-gray-500">${ci.company_name} · ${(ci.content_type||'').replace(/_/g,' ')}</p></div>
-                <div class="text-right">${statusBadge(ci.status)}<p class="text-xs text-gray-400 mt-1">Due ${ci.due_date || 'TBD'}</p></div>
-              </div>`).join('')}</div>`}
-        </div>
-
-        <div class="card lg:col-span-2">
-          <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-clock text-gray-400"></i>Recent Activity</h3>
-          <div class="space-y-2">
-            ${(d.recent_activity || []).map(a => `
-              <div class="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                <div class="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-                  <i class="fas ${activityIcon(a.activity_type)} text-violet-500 text-xs"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm text-gray-800">${a.description}</p>
-                  <p class="text-xs text-gray-400">${a.company_name || ''} · ${ago(a.created_at)}</p>
-                </div>
-              </div>
-            `).join('')}
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <h3 style="font-size:13.5px;font-weight:700;color:#1e1b30;display:flex;align-items:center;gap:8px">
+              <span style="width:28px;height:28px;border-radius:8px;background:rgba(124,92,252,0.1);display:inline-flex;align-items:center;justify-content:center">
+                <i class="fas fa-file-contract" style="color:#7C5CFC;font-size:12px"></i>
+              </span>
+              Awaiting Approval
+            </h3>
+            ${(d.pending_proposals||[]).length ? `<span class="badge badge-purple">${(d.pending_proposals||[]).length}</span>` : ''}
           </div>
+          ${!(d.pending_proposals || []).length
+            ? `<div class="empty-state" style="padding:24px 0"><i class="fas fa-file-circle-check" style="font-size:28px;opacity:0.2;margin-bottom:8px;display:block"></i><p style="font-size:12px">No pending proposals</p></div>`
+            : `<div style="display:flex;flex-direction:column;gap:8px">${(d.pending_proposals||[]).map(p => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#faf9ff;border-radius:10px;border:1px solid #ede9f8">
+                <div>
+                  <div style="font-weight:700;font-size:13px;color:#1e1b30">${p.company_name}</div>
+                  <div style="font-size:11px;color:#9892b0;margin-top:2px">${p.title} · ${fmtCurrency(p.monthly_investment)}/mo</div>
+                </div>
+                <div style="text-align:right">
+                  ${statusBadge('sent')}
+                  <div style="font-size:10.5px;color:#b0aac8;margin-top:4px">${ago(p.sent_at)}</div>
+                </div>
+              </div>`).join('')}</div>`}
+        </div>
+
+        <!-- Upcoming Content Deadlines -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <h3 style="font-size:13.5px;font-weight:700;color:#1e1b30;display:flex;align-items:center;gap:8px">
+              <span style="width:28px;height:28px;border-radius:8px;background:rgba(52,211,153,0.1);display:inline-flex;align-items:center;justify-content:center">
+                <i class="fas fa-calendar-days" style="color:#059669;font-size:12px"></i>
+              </span>
+              Upcoming Deadlines
+            </h3>
+          </div>
+          ${!(d.upcoming_content || []).length
+            ? `<div class="empty-state" style="padding:24px 0"><i class="fas fa-calendar-check" style="font-size:28px;opacity:0.2;margin-bottom:8px;display:block"></i><p style="font-size:12px">No upcoming content</p></div>`
+            : `<div style="display:flex;flex-direction:column;gap:8px">${(d.upcoming_content||[]).map(ci => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#f7fdf9;border-radius:10px;border:1px solid #dcfce7">
+                <div>
+                  <div style="font-weight:700;font-size:13px;color:#1e1b30">${ci.title}</div>
+                  <div style="font-size:11px;color:#9892b0;margin-top:2px">${ci.company_name} · ${(ci.content_type||'').replace(/_/g,' ')}</div>
+                </div>
+                <div style="text-align:right">
+                  ${statusBadge(ci.status)}
+                  <div style="font-size:10.5px;color:#b0aac8;margin-top:4px">Due ${ci.due_date || 'TBD'}</div>
+                </div>
+              </div>`).join('')}</div>`}
+        </div>
+
+        <!-- Recent Activity (full width) -->
+        <div class="card" style="grid-column:1/-1">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <h3 style="font-size:13.5px;font-weight:700;color:#1e1b30;display:flex;align-items:center;gap:8px">
+              <span style="width:28px;height:28px;border-radius:8px;background:rgba(124,92,252,0.08);display:inline-flex;align-items:center;justify-content:center">
+                <i class="fas fa-bolt" style="color:#7C5CFC;font-size:11px"></i>
+              </span>
+              Recent Activity
+            </h3>
+          </div>
+          ${!(d.recent_activity||[]).length
+            ? `<div class="empty-state" style="padding:16px 0"><p style="font-size:12px">No recent activity</p></div>`
+            : `<div style="display:flex;flex-direction:column;gap:0">
+              ${(d.recent_activity||[]).map((a,i) => `
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 0;${i < (d.recent_activity.length-1) ? 'border-bottom:1px solid #f0edf8' : ''}">
+                <div style="width:32px;height:32px;border-radius:10px;background:rgba(124,92,252,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <i class="fas ${activityIcon(a.activity_type)}" style="color:#7C5CFC;font-size:12px"></i>
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:#1e1b30;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.description}</div>
+                  <div style="font-size:11px;color:#9892b0;margin-top:1px">${a.company_name ? a.company_name + ' · ' : ''}${ago(a.created_at)}</div>
+                </div>
+              </div>`).join('')}</div>`}
         </div>
       </div>
     </div>
@@ -514,42 +628,42 @@ function renderClients() {
   if (!state.clients.length && !state._clientsLoaded) { loadClients(); return loading(); }
   const showArchived = state.showArchivedClients || false;
   return `
-    <div class="space-y-4">
-      <div class="flex gap-3 flex-wrap items-center">
-        <input type="text" id="clientSearch" placeholder="Search clients..." class="input-field max-w-xs" oninput="filterClients(this.value)">
-        <select id="clientStatusFilter" class="input-field w-40" onchange="filterClients()">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="clientSearch" placeholder="🔍  Search clients…" class="input-field" style="max-width:260px" oninput="filterClients(this.value)">
+        <select id="clientStatusFilter" class="input-field" style="width:160px" onchange="filterClients()">
           <option value="">All Statuses</option>
           <option value="active">Active</option>
           <option value="prospect">Prospect</option>
           <option value="paused">Paused</option>
           <option value="churned">Churned</option>
         </select>
-        <button onclick="toggleArchivedClients()" class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition ${showArchived ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
-          <i class="fas fa-archive text-xs"></i>
+        <button onclick="toggleArchivedClients()" class="btn-secondary btn-sm">
+          <i class="fas fa-box-archive"></i>
           ${showArchived ? 'Hide Archived' : 'Show Archived'}
-          ${state.archivedClientCount > 0 ? `<span class="ml-1 px-1.5 py-0.5 rounded-full text-xs ${showArchived ? 'bg-white/20' : 'bg-slate-300 text-slate-700'}">${state.archivedClientCount}</span>` : ''}
+          ${state.archivedClientCount > 0 ? `<span class="badge badge-slate" style="margin-left:2px">${state.archivedClientCount}</span>` : ''}
         </button>
       </div>
       ${showArchived ? `
-        <div class="flex items-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600">
-          <i class="fas fa-archive text-slate-400"></i>
-          <span>Showing archived clients. Their data is preserved and can be restored at any time.</span>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f8f7ff;border:1px solid #e8e4f5;border-radius:11px;font-size:13px;color:#6b6585">
+          <i class="fas fa-box-archive" style="color:#9892b0"></i>
+          Showing archived clients. Data is preserved and can be restored at any time.
         </div>` : ''}
-      <div id="clientsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div id="clientsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px">
         ${renderClientCards(state.clients)}
       </div>
-      ${!state.clients.length ? '<div class="text-center py-12 text-gray-400"><i class="fas fa-users text-4xl mb-3 block opacity-30"></i><p>No clients found</p></div>' : ''}
+      ${!state.clients.length ? `<div class="empty-state"><i class="fas fa-users"></i><p>No clients found</p></div>` : ''}
     </div>
   `;
 }
 
 function renderClientCards(clients) {
   const obColors = {
-    not_sent: 'text-gray-400',
-    sent: 'text-blue-500',
-    in_progress: 'text-purple-500',
-    submitted: 'text-violet-500',
-    approved: 'text-green-500',
+    not_sent: '#9892b0',
+    sent: '#2563eb',
+    in_progress: '#7C5CFC',
+    submitted: '#7C5CFC',
+    approved: '#059669',
   };
   const obIcons = {
     not_sent: 'fa-clipboard',
@@ -561,41 +675,58 @@ function renderClientCards(clients) {
   const obLabels = {
     not_sent: 'Not Onboarded',
     sent: 'Onboarding Sent',
-    in_progress: 'Onboarding In Progress',
-    submitted: 'Onboarding Submitted',
-    approved: 'Onboarded',
+    in_progress: 'In Progress',
+    submitted: 'Submitted',
+    approved: 'Onboarded ✓',
   };
+  // Generate consistent avatar color from name
+  function clientColor(name) {
+    const colors = ['#7C5CFC','#059669','#0284c7','#d97706','#dc2626','#0d9488','#7c3aed','#2563eb'];
+    let h = 0; for (const c of name||'') h = (h*31 + c.charCodeAt(0)) & 0xffffffff;
+    return colors[Math.abs(h) % colors.length];
+  }
   return clients.map(cl => {
     const obStatus = cl.onboarding_status || 'not_sent';
     const isArchived = cl.is_archived == 1;
+    const avatarColor = isArchived ? '#94a3b8' : clientColor(cl.company_name);
+    const initials = cl.company_name?.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || '?';
     return `
-    <div class="card hover:shadow-md transition ${isArchived ? 'opacity-60 bg-slate-50 border-slate-200' : ''}">
-      ${isArchived ? `<div class="flex items-center gap-2 mb-3 px-3 py-2 bg-slate-100 rounded-lg">
-        <i class="fas fa-archive text-slate-400 text-xs"></i>
-        <span class="text-xs text-slate-500 font-medium">Archived ${cl.archived_at ? '· ' + cl.archived_at.slice(0,10) : ''}</span>
-        <button onclick="restoreClient(${cl.id})" class="ml-auto text-xs text-violet-600 hover:text-violet-800 font-medium"><i class="fas fa-undo mr-1"></i>Restore</button>
-      </div>` : ''}
-      <div class="flex items-start justify-between mb-3">
-        <div class="w-10 h-10 rounded-xl ${isArchived ? 'bg-slate-200' : 'bg-violet-100'} flex items-center justify-center font-bold ${isArchived ? 'text-slate-500' : 'text-violet-700'} cursor-pointer" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">
-          ${cl.company_name.charAt(0)}
-        </div>
-        <div class="flex items-center gap-2">
+    <div class="card" style="${isArchived ? 'opacity:0.65;background:#f8f7ff' : ''}cursor:default">
+      ${isArchived ? `
+        <div style="display:flex;align-items:center;gap:8px;margin:-20px -20px 14px;padding:10px 14px;background:#f1f0fb;border-bottom:1px solid #e8e4f5;border-radius:14px 14px 0 0">
+          <i class="fas fa-box-archive" style="color:#9892b0;font-size:11px"></i>
+          <span style="font-size:11px;color:#9892b0;font-weight:600">Archived ${cl.archived_at ? '· ' + cl.archived_at.slice(0,10) : ''}</span>
+          <button onclick="restoreClient(${cl.id})" style="margin-left:auto;font-size:11px;color:#7C5CFC;font-weight:700;background:none;border:none;cursor:pointer;padding:0"><i class="fas fa-rotate-left" style="margin-right:4px"></i>Restore</button>
+        </div>` : ''}
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+        <div
+          style="width:42px;height:42px;border-radius:12px;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-family:'Maven Pro',sans-serif;font-weight:900;font-size:15px;color:#fff;cursor:pointer;flex-shrink:0;box-shadow:0 3px 10px ${avatarColor}55"
+          onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})"
+        >${initials}</div>
+        <div style="display:flex;align-items:center;gap:6px">
           ${isArchived ? statusBadge('archived') : statusBadge(cl.status)}
-          ${!isArchived ? `<button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' class="text-gray-300 hover:text-violet-500 transition p-1"><i class="fas fa-edit text-xs"></i></button>` : ''}
+          ${!isArchived ? `<button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' style="width:28px;height:28px;border-radius:8px;background:rgba(124,92,252,0.08);border:none;cursor:pointer;color:#7C5CFC;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='rgba(124,92,252,0.16)'" onmouseout="this.style.background='rgba(124,92,252,0.08)'"><i class="fas fa-pen" style="font-size:11px"></i></button>` : ''}
         </div>
       </div>
-      <h3 class="font-semibold ${isArchived ? 'text-slate-600' : 'text-gray-900'} cursor-pointer hover:text-violet-600" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">${cl.company_name}</h3>
-      <p class="text-sm text-gray-500 mt-0.5">${cl.website}</p>
-      <p class="text-xs text-gray-400 mt-0.5">${cl.industry || ''} ${cl.location ? '· ' + cl.location : ''}</p>
-      <div class="mt-3 pt-3 border-t border-gray-50 flex gap-3 text-xs text-gray-500 flex-wrap items-center">
-        <span><i class="fas fa-rocket mr-1"></i>${cl.campaign_count || 0} campaigns</span>
-        <span><i class="fas fa-key mr-1"></i>${cl.keyword_count || 0} keywords</span>
-        ${cl.monthly_budget && !isArchived ? `<span class="ml-auto font-semibold text-gray-700">${fmtCurrencyFor(cl.monthly_budget, cl.country)}/mo</span>` : ''}
+      <div
+        style="font-family:'Maven Pro',sans-serif;font-size:15px;font-weight:700;color:${isArchived ? '#6b6585' : '#1e1b30'};cursor:pointer;margin-bottom:3px"
+        onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})"
+        onmouseover="this.style.color='#7C5CFC'" onmouseout="this.style.color='${isArchived ? '#6b6585' : '#1e1b30'}'">
+        ${cl.company_name}
       </div>
-      ${!isArchived ? `<div class="mt-2 flex items-center gap-1.5 text-xs ${obColors[obStatus] || 'text-gray-400'}">
-        <i class="fas ${obIcons[obStatus] || 'fa-clipboard'} text-xs"></i>
-        <span>${obLabels[obStatus] || 'Not Onboarded'}</span>
-      </div>` : `<div class="mt-2 text-xs text-slate-400 italic">${cl.archive_note ? '"' + cl.archive_note + '"' : 'No reason noted'}</div>`}
+      <div style="font-size:12px;color:#9892b0;margin-bottom:2px">${cl.website || ''}</div>
+      <div style="font-size:11.5px;color:#b0aac8">${cl.industry || ''}${cl.location ? ' · ' + cl.location : ''}</div>
+
+      <div style="display:flex;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid #f0edf8;font-size:11.5px;color:#9892b0;align-items:center;flex-wrap:wrap">
+        <span><i class="fas fa-rocket" style="color:#7C5CFC;margin-right:5px;font-size:10px"></i>${cl.campaign_count || 0} campaigns</span>
+        <span><i class="fas fa-magnifying-glass" style="color:#0284c7;margin-right:5px;font-size:10px"></i>${cl.keyword_count || 0} keywords</span>
+        ${cl.monthly_budget && !isArchived ? `<span style="margin-left:auto;font-family:'Maven Pro',sans-serif;font-weight:700;font-size:13px;color:#1e1b30">${fmtCurrencyFor(cl.monthly_budget, cl.country)}<span style="font-weight:500;color:#9892b0;font-size:11px">/mo</span></span>` : ''}
+      </div>
+      ${!isArchived ? `
+        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-weight:600;color:${obColors[obStatus] || '#9892b0'}">
+          <i class="fas ${obIcons[obStatus] || 'fa-clipboard'}" style="font-size:10px"></i>
+          ${obLabels[obStatus] || 'Not Onboarded'}
+        </div>` : `<div style="margin-top:8px;font-size:11px;color:#b0aac8;font-style:italic">${cl.archive_note ? '"' + cl.archive_note + '"' : 'No reason noted'}</div>`}
     </div>
   `;}).join('');
 }
@@ -3237,7 +3368,7 @@ async function loadKeywords() {
 
 async function loadLLM() {
   try {
-    const res = await API.get('/llm');
+    const res = await API.get('/llm/prompts');
     state.llmData = res.data;
     render();
   } catch (e) { console.error('LLM load failed:', e); }

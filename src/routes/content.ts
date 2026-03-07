@@ -56,17 +56,37 @@ contentRoutes.put('/:id', async (c) => {
   const id = c.req.param('id')
   const db = c.env.DB
   const body = await c.req.json()
-  const { title, content_type, status, target_keyword, target_url, word_count_target, brief, content_body, published_url, due_date, assigned_to, notes } = body
+
+  // Fetch existing record first so partial updates don't lose data
+  const existing = await db.prepare('SELECT * FROM content_items WHERE id = ?').bind(id).first() as any
+  if (!existing) return c.json({ error: 'Content item not found' }, 404)
+
+  // Validate status against schema CHECK constraint
+  const validStatuses = ['planned','briefed','in_progress','review','approved','published','cancelled']
+  const rawStatus = body.status ?? existing.status
+  const status = validStatuses.includes(rawStatus) ? rawStatus : existing.status
+
+  const title = body.title ?? existing.title
+  const content_type = body.content_type ?? existing.content_type
+  const target_keyword = body.target_keyword ?? existing.target_keyword
+  const target_url = body.target_url ?? existing.target_url
+  const word_count_target = body.word_count_target ?? existing.word_count_target
+  const brief = body.brief ?? existing.brief
+  const content_body = body.content_body ?? existing.content_body ?? ''
+  const published_url = body.published_url ?? existing.published_url ?? ''
+  const due_date = body.due_date ?? existing.due_date
+  const assigned_to = body.assigned_to ?? existing.assigned_to ?? ''
+  const notes = body.notes ?? existing.notes ?? ''
 
   const now = new Date().toISOString()
-  const publishedAt = status === 'published' ? now : null
+  const publishedAt = status === 'published' && !existing.published_at ? now : null
 
   await db.prepare(`
     UPDATE content_items SET title=?, content_type=?, status=?, target_keyword=?, target_url=?, word_count_target=?, brief=?, content_body=?, published_url=?, due_date=?, assigned_to=?, notes=?, ${publishedAt ? 'published_at=?,' : ''} updated_at=?
     WHERE id=?
   `).bind(
     title, content_type, status, target_keyword, target_url, word_count_target,
-    brief, content_body || '', published_url || '', due_date, assigned_to || '', notes || '',
+    brief, content_body, published_url, due_date, assigned_to, notes,
     ...(publishedAt ? [publishedAt] : []),
     now, id
   ).run()

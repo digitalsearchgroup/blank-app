@@ -662,82 +662,372 @@ function getAppHTML(): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DSG Campaign Manager – Digital Search Group</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a1a2e'/><text x='16' y='22' text-anchor='middle' font-size='16' font-weight='bold' font-family='Arial' fill='%237C5CFC'>D</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a1a2e'/><text x='16' y='22' text-anchor='middle' font-size='14' font-weight='900' font-family='Arial' fill='%237C5CFC'>D</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
   <style>
-    /* DSG Brand Colors: --dsg-dark: #1a1a2e, --dsg-primary: #7C5CFC (violet), --dsg-charcoal: #313131 */
+    /* ═══════════════════════════════════════════════════
+       DSG PREMIUM UI v3 — #7C5CFC violet · #1a1a2e dark
+       ═══════════════════════════════════════════════════ */
     :root {
-      --dsg-dark: #1a1a2e;
-      --dsg-dark-2: #16213e;
-      --dsg-primary: #7C5CFC;
-      --dsg-primary-hover: #6A4FE8;
-      --dsg-charcoal: #313131;
+      --p:    #7C5CFC;
+      --p-h:  #6a4ee0;
+      --p-l:  #a07dff;
+      --p-gl: rgba(124,92,252,0.45);
+      --bg:   #f3f2fb;
+      --surf: #ffffff;
+      --bdr:  #e8e4f5;
+      --txt:  #1e1b30;
+      --txt2: #6b6585;
+      --sb:   #12111e;
     }
 
-    /* Sidebar links */
-    .sidebar-link {
-      display: flex; align-items: center; gap: 0.75rem;
-      padding: 0.75rem 1rem; border-radius: 0.75rem;
-      color: #cbd5e1; /* slate-300 */
-      background: transparent;
-      border: none; transition: all 0.15s;
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Montserrat', system-ui, sans-serif; background: var(--bg); color: var(--txt); margin: 0; font-size: 14px; line-height: 1.5; }
+    h1,h2,h3,h4,h5,h6 { font-family: 'Maven Pro','Montserrat',system-ui,sans-serif; font-weight: 700; margin: 0; }
+    a { text-decoration: none; }
+    button { font-family: inherit; }
+
+    /* ── Keyframes ── */
+    @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+    @keyframes fadeIn  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes spin    { to{transform:rotate(360deg)} }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(124,92,252,0.25); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(124,92,252,0.45); }
+
+    /* ══ SIDEBAR ══ */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      background: linear-gradient(175deg, #1a1829 0%, #14112a 60%, #0e1628 100%);
+      border-right: 1px solid rgba(255,255,255,0.05);
+      overflow-y: auto; overflow-x: hidden;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.25);
+    }
+
+    /* Sidebar logo area */
+    .sb-logo {
+      padding: 20px 18px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .sb-logo-img {
+      height: 36px; object-fit: contain; object-position: left;
+      filter: brightness(0) invert(1);
+      max-width: 180px;
+    }
+    .sb-logo-fallback {
+      display: none;
+      font-family: 'Maven Pro',sans-serif; font-weight: 900;
+      font-size: 16px; color: #fff; letter-spacing: 0.05em;
+    }
+
+    /* Sidebar nav */
+    .sb-nav { flex: 1; padding: 10px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+    .sb-section { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255,255,255,0.25); padding: 10px 10px 4px; margin-top: 6px; }
+    .sb-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: 10px;
+      color: rgba(255,255,255,0.52);
+      background: transparent; border: none;
       cursor: pointer; width: 100%; text-align: left;
+      font-size: 12.5px; font-weight: 500;
+      letter-spacing: 0.01em;
+      transition: all 0.15s ease;
+      position: relative;
     }
-    .sidebar-link:hover { color: #fff; background: rgba(255,255,255,0.1); }
-    .sidebar-link.active { color: #fff; background: rgba(124,92,252,0.25); border-left: 3px solid #7C5CFC; }
-    .sidebar-link i, .sidebar-link span { color: inherit; }
+    .sb-link:hover {
+      color: rgba(255,255,255,0.88);
+      background: rgba(255,255,255,0.07);
+    }
+    .sb-link.active {
+      color: #fff;
+      background: linear-gradient(90deg, rgba(124,92,252,0.28) 0%, rgba(124,92,252,0.1) 100%);
+      border-left: 2.5px solid #7C5CFC;
+      padding-left: 9.5px;
+    }
+    .sb-link.active .sb-icon { color: #a07dff; }
+    .sb-icon { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; color: rgba(255,255,255,0.35); transition: color 0.15s; }
+    .sb-link:hover .sb-icon { color: rgba(255,255,255,0.7); }
 
-    /* Cards */
-    .card { background: #fff; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.07); border: 1px solid #f3f4f6; padding: 1.5rem; }
+    /* Sidebar footer */
+    .sb-footer { padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+    .sb-status { display: flex; align-items: center; gap: 8px; padding: 6px 10px; margin-bottom: 8px; }
+    .sb-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .sb-user {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 11px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .sb-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
 
-    /* Buttons — DSG Violet primary */
-    .btn-primary { background: #7C5CFC; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
-    .btn-primary:hover { background: #6A4FE8; }
-    .btn-secondary { background: #f3f4f6; color: #374151; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
-    .btn-secondary:hover { background: #e5e7eb; }
-    .btn-success { background: #16a34a; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
-    .btn-success:hover { background: #15803d; }
-    .btn-danger { background: #dc2626; color: #fff; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: none; font-size: 0.875rem; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; }
-    .btn-danger:hover { background: #b91c1c; }
+    /* ══ TOP BAR ══ */
+    .topbar {
+      height: 56px; background: var(--surf);
+      border-bottom: 1px solid var(--bdr);
+      display: flex; align-items: center;
+      padding: 0 24px; gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 12px rgba(124,92,252,0.06);
+      position: sticky; top: 0; z-index: 30;
+    }
+    .topbar-title { font-family: 'Maven Pro',sans-serif; font-weight: 800; font-size: 17px; color: var(--txt); }
+    .topbar-sub { font-size: 11px; color: var(--txt2); margin-top: 1px; }
 
-    /* Inputs — DSG violet focus */
-    .input-field { width: 100%; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 0.625rem 1rem; font-size: 0.875rem; outline: none; transition: box-shadow 0.15s; }
-    .input-field:focus { box-shadow: 0 0 0 2px rgba(124,92,252,0.3); border-color: #7C5CFC; }
-    /* Hide native browser spinners and clear buttons */
+    /* ══ LAYOUT ══ */
+    .app-layout { display: flex; height: 100vh; overflow: hidden; }
+    .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .page-content { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* ══ CARDS ══ */
+    .card {
+      background: var(--surf);
+      border-radius: 14px;
+      border: 1px solid var(--bdr);
+      box-shadow: 0 2px 12px rgba(124,92,252,0.06), 0 1px 3px rgba(0,0,0,0.04);
+      padding: 20px;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .card:hover { box-shadow: 0 4px 20px rgba(124,92,252,0.1), 0 2px 6px rgba(0,0,0,0.06); }
+
+    /* ══ KPI / STAT CARDS ══ */
+    .stat-card {
+      background: var(--surf);
+      border-radius: 14px;
+      border: 1px solid var(--bdr);
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(124,92,252,0.06), 0 1px 3px rgba(0,0,0,0.04);
+      position: relative; overflow: hidden;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      cursor: pointer;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(124,92,252,0.14), 0 2px 8px rgba(0,0,0,0.07); }
+    .stat-card::before { content:''; position:absolute; top:0;right:0; width:100px;height:100px; border-radius:0 14px 0 100%; opacity:0.06; }
+    .stat-card-icon { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-bottom: 12px; }
+
+    /* ══ BUTTONS ══ */
+    /* Primary — violet 3D */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 10px; border: none;
+      font-family: 'Maven Pro','Montserrat',sans-serif;
+      font-size: 13px; font-weight: 700; letter-spacing: 0.03em;
+      color: #fff; cursor: pointer;
+      background: linear-gradient(160deg, #9e7cff 0%, #7C5CFC 50%, #5d3fe4 100%);
+      box-shadow:
+        0 5px 16px rgba(124,92,252,0.45),
+        0 1px 4px rgba(0,0,0,0.18),
+        inset 0 1px 0 rgba(255,255,255,0.26),
+        inset 0 -2px 0 rgba(0,0,0,0.14);
+      transition: all 0.18s ease;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      position: relative; overflow: hidden;
+    }
+    .btn-primary::after { content:''; position:absolute;top:0;left:0;right:0;height:45%; background:linear-gradient(180deg,rgba(255,255,255,0.16) 0%,transparent); border-radius:10px 10px 0 0; pointer-events:none; }
+    .btn-primary:hover {
+      background: linear-gradient(160deg, #af8eff 0%, #8d6dff 50%, #6b4ef2 100%);
+      box-shadow: 0 8px 22px rgba(124,92,252,0.55), 0 2px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+      transform: translateY(-2px);
+    }
+    .btn-primary:active { transform: translateY(0); box-shadow: 0 3px 10px rgba(124,92,252,0.4); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; pointer-events: none; }
+
+    /* Secondary — white/ghost */
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 10px;
+      font-family: 'Maven Pro','Montserrat',sans-serif;
+      font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+      color: #5b4fd4; cursor: pointer;
+      background: linear-gradient(160deg, #fff 0%, #f5f3fc 100%);
+      border: 1.5px solid #ddd6f8;
+      box-shadow: 0 2px 8px rgba(124,92,252,0.1), inset 0 1px 0 rgba(255,255,255,1);
+      transition: all 0.18s ease;
+    }
+    .btn-secondary:hover {
+      background: linear-gradient(160deg, #f5f3fc 0%, #ede8fc 100%);
+      border-color: #b5aff0;
+      box-shadow: 0 4px 14px rgba(124,92,252,0.18), inset 0 1px 0 rgba(255,255,255,1);
+      transform: translateY(-1px);
+      color: #4a3cc0;
+    }
+    .btn-secondary:active { transform: translateY(0); }
+    .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; pointer-events: none; }
+
+    /* Success — green 3D */
+    .btn-success {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 10px; border: none;
+      font-family: 'Maven Pro','Montserrat',sans-serif;
+      font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+      color: #fff; cursor: pointer;
+      background: linear-gradient(160deg, #34d474 0%, #16a34a 50%, #0d8a3c 100%);
+      box-shadow: 0 5px 16px rgba(22,163,74,0.38), 0 1px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.24);
+      transition: all 0.18s ease; text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+      position: relative; overflow: hidden;
+    }
+    .btn-success::after { content:''; position:absolute;top:0;left:0;right:0;height:45%; background:linear-gradient(180deg,rgba(255,255,255,0.16) 0%,transparent); pointer-events:none; }
+    .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(22,163,74,0.48), inset 0 1px 0 rgba(255,255,255,0.28); }
+    .btn-success:active { transform: translateY(0); }
+
+    /* Danger — red 3D */
+    .btn-danger {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 10px; border: none;
+      font-family: 'Maven Pro','Montserrat',sans-serif;
+      font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+      color: #fff; cursor: pointer;
+      background: linear-gradient(160deg, #f87070 0%, #dc2626 50%, #b71c1c 100%);
+      box-shadow: 0 5px 16px rgba(220,38,38,0.38), 0 1px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
+      transition: all 0.18s ease; text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+      position: relative; overflow: hidden;
+    }
+    .btn-danger::after { content:''; position:absolute;top:0;left:0;right:0;height:45%; background:linear-gradient(180deg,rgba(255,255,255,0.14) 0%,transparent); pointer-events:none; }
+    .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(220,38,38,0.48), inset 0 1px 0 rgba(255,255,255,0.24); }
+    .btn-danger:active { transform: translateY(0); }
+
+    /* Warn / amber */
+    .btn-warn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 10px; border: none;
+      font-family: 'Maven Pro','Montserrat',sans-serif;
+      font-size: 13px; font-weight: 700;
+      color: #fff; cursor: pointer;
+      background: linear-gradient(160deg, #fbbf24 0%, #d97706 50%, #b45309 100%);
+      box-shadow: 0 5px 16px rgba(217,119,6,0.38), 0 1px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.24);
+      transition: all 0.18s ease; text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+    .btn-warn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(217,119,6,0.48); }
+
+    /* Small variant */
+    .btn-sm { padding: 6px 13px; font-size: 12px; border-radius: 8px; }
+    .btn-xs { padding: 4px 10px; font-size: 11px; border-radius: 7px; }
+    .btn-icon { padding: 8px; border-radius: 9px; min-width: 34px; justify-content: center; }
+
+    /* ══ INPUTS ══ */
+    .input-field, input.input-field, select.input-field, textarea.input-field {
+      width: 100%;
+      border: 1.5px solid #e0daf5; border-radius: 10px;
+      padding: 9px 13px; font-size: 13.5px;
+      font-family: 'Montserrat',sans-serif;
+      outline: none; background: #fdfcff; color: var(--txt);
+      transition: all 0.18s ease;
+      box-shadow: 0 1px 4px rgba(124,92,252,0.05);
+    }
+    .input-field:focus {
+      border-color: var(--p);
+      box-shadow: 0 0 0 3.5px rgba(124,92,252,0.16), 0 1px 4px rgba(124,92,252,0.08);
+      background: #fff;
+    }
+    .input-field::placeholder { color: #c4bedd; }
     input[type=number]::-webkit-inner-spin-button,
-    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
     input[type=number] { -moz-appearance: textfield; appearance: textfield; }
-    input[type=date]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
-    input[type=search]::-webkit-search-cancel-button,
-    input[type=search]::-webkit-search-decoration { -webkit-appearance: none; }
+    input[type=date]::-webkit-calendar-picker-indicator { opacity: 0.4; cursor: pointer; }
+    select.input-field { cursor: pointer; }
+    textarea.input-field { resize: vertical; min-height: 80px; }
 
-    /* Modals */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+    /* ══ FORM LABELS ══ */
+    label { display: block; font-size: 12px; font-weight: 700; color: #4a4468; margin-bottom: 5px; letter-spacing: 0.03em; }
+
+    /* ══ MODALS ══ */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(8,6,20,0.7); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50; padding: 16px;
+      animation: fadeIn 0.2s ease;
+    }
     .modal-overlay.hidden { display: none; }
-    .modal-box { background: #fff; border-radius: 1rem; box-shadow: 0 25px 50px rgba(0,0,0,0.25); width: 100%; max-width: 42rem; max-height: 90vh; overflow-y: auto; }
+    .modal-box {
+      background: var(--surf); border-radius: 18px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.35), 0 4px 20px rgba(124,92,252,0.15);
+      width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto;
+      border: 1px solid var(--bdr);
+    }
+    .modal-header {
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid var(--bdr);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-body { padding: 22px 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--bdr); display: flex; justify-content: flex-end; gap: 10px; }
 
-    /* Misc */
-    .rank-improved { color: #16a34a; }
-    .rank-declined { color: #dc2626; }
-    .rank-new { color: #7C5CFC; }
-    body { font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #313131; }
-    h1, h2, h3, h4, h5, h6, .font-heading { font-family: 'Maven Pro', 'Montserrat', system-ui, sans-serif; font-weight: 700; }
-    .text-lg.font-bold, .text-xl.font-bold, .text-2xl.font-bold, .text-3xl.font-bold { font-family: 'Maven Pro', 'Montserrat', system-ui, sans-serif; }
-    .shimmer { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
-    .toast.show { transform: translateY(0); opacity: 1; }
-    /* DSG Logo mark in sidebar */
-    .dsg-logo-mark { width: 36px; height: 36px; background: #7C5CFC; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; color: #fff; letter-spacing: -1px; flex-shrink: 0; }
+    /* ══ BADGES / PILLS ══ */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+    .badge-purple { background: rgba(124,92,252,0.1); color: #7C5CFC; border: 1px solid rgba(124,92,252,0.2); }
+    .badge-green  { background: rgba(22,163,74,0.08); color: #15803d; border: 1px solid rgba(22,163,74,0.18); }
+    .badge-amber  { background: rgba(245,158,11,0.08); color: #b45309; border: 1px solid rgba(245,158,11,0.2); }
+    .badge-red    { background: rgba(220,38,38,0.08); color: #dc2626; border: 1px solid rgba(220,38,38,0.18); }
+    .badge-blue   { background: rgba(59,130,246,0.08); color: #2563eb; border: 1px solid rgba(59,130,246,0.18); }
+    .badge-slate  { background: rgba(100,116,139,0.08); color: #64748b; border: 1px solid rgba(100,116,139,0.18); }
+    .badge-teal   { background: rgba(20,184,166,0.08); color: #0d9488; border: 1px solid rgba(20,184,166,0.18); }
+
+    /* ══ TABLE ══ */
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--txt2); padding: 10px 14px; border-bottom: 2px solid var(--bdr); text-align: left; white-space: nowrap; }
+    .tbl td { padding: 12px 14px; border-bottom: 1px solid #f0edf9; font-size: 13.5px; vertical-align: middle; }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: rgba(124,92,252,0.025); }
+
+    /* ══ SHIMMER ══ */
+    .shimmer { background: linear-gradient(90deg,#f0edf8 25%,#e8e4f5 50%,#f0edf8 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+
+    /* ══ TOAST ══ */
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); pointer-events: none; min-width: 220px; max-width: 360px; }
+    .toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+    .toast-inner { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 14px; background: #1e1b30; color: #fff; font-size: 13.5px; font-weight: 600; box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); }
+
+    /* ══ RANK BADGES ══ */
+    .rank-up   { color: #16a34a; font-weight: 700; }
+    .rank-down { color: #dc2626; font-weight: 700; }
+    .rank-new  { color: #7C5CFC; font-weight: 700; }
+
+    /* ══ PAGE ANIMATION ══ */
+    .page-fade { animation: fadeIn 0.25s ease both; }
+
+    /* ══ SECTION LABELS ══ */
+    .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255,255,255,0.28); padding: 8px 10px 3px; }
+
+    /* ══ DIVIDERS ══ */
+    hr { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
+
+    /* ══ FORM SECTIONS ══ */
+    .form-section { background: var(--surf); border-radius: 14px; border: 1px solid var(--bdr); padding: 20px; margin-bottom: 16px; }
+    .form-section-title { font-family: 'Maven Pro',sans-serif; font-size: 14px; font-weight: 700; color: var(--txt); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    /* ══ LOADING ══ */
+    .loading-spin { animation: spin 0.8s linear infinite; }
+
+    /* ══ DETAIL TABS ══ */
+    .tab-nav { display: flex; gap: 4px; padding: 4px; background: #f0edf8; border-radius: 12px; margin-bottom: 20px; }
+    .tab-btn { flex: 1; padding: 8px 14px; border-radius: 9px; font-size: 12.5px; font-weight: 600; border: none; cursor: pointer; background: transparent; color: var(--txt2); transition: all 0.18s ease; text-align: center; }
+    .tab-btn.active { background: var(--surf); color: var(--p); box-shadow: 0 2px 8px rgba(124,92,252,0.14); }
+    .tab-btn:hover:not(.active) { color: var(--txt); background: rgba(255,255,255,0.6); }
+
+    /* ══ EMPTY STATE ══ */
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--txt2); }
+    .empty-state i { font-size: 40px; opacity: 0.3; display: block; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ══ ONBOARDING PROGRESS ══ */
+    .ob-progress-bar { background: #e8e4f5; border-radius: 99px; height: 6px; overflow: hidden; }
+    .ob-progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #7C5CFC, #a07dff); transition: width 0.4s ease; }
   </style>
 </head>
-<body class="bg-gray-50">
+<body>
   <div id="app"></div>
-  <div id="toast" class="toast bg-gray-900 text-white px-5 py-3 rounded-xl shadow-lg text-sm"></div>
+  <div id="toast" class="toast">
+    <div class="toast-inner"><i id="toastIcon" class="fas fa-check-circle" style="color:#34d474;font-size:16px;flex-shrink:0"></i><span id="toastMsg"></span></div>
+  </div>
   <script src="/static/app.js"></script>
 </body>
 </html>`
@@ -1334,98 +1624,310 @@ loadForm();
 export default app
 
 function getLoginPageHTML(): string {
+  const year = new Date().getFullYear();
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In – Digital Search Group</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap');
-    @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
-    body { font-family: 'Montserrat', system-ui, sans-serif; }
-    h1, h2, h3 { font-family: 'Maven Pro', 'Montserrat', system-ui, sans-serif; }
-    .fade-up { animation: fadeUp 0.4s ease both }
-    input:focus { outline: none; border-color: #7C5CFC; box-shadow: 0 0 0 3px rgba(124,92,252,0.12) }
-    .btn-login { transition: all 0.15s; }
-    .btn-login:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(124,92,252,0.4) }
-    .btn-login:active { transform: translateY(0) }
-    .btn-login:disabled { opacity: 0.65; cursor: not-allowed }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Montserrat', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      background: #0a0914;
+      overflow-x: hidden;
+    }
+    h1,h2,h3,h4 { font-family: 'Maven Pro','Montserrat',system-ui,sans-serif; }
+
+    /* ─── Animations ─── */
+    @keyframes fadeSlideUp { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeSlideRight { from{opacity:0;transform:translateX(-28px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-20px)} }
+    @keyframes rotateSlow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes shimmerMove { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+    @keyframes pulseGlow { 0%,100%{opacity:0.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.03)} }
+
+    .anim-1 { animation: fadeSlideRight 0.7s cubic-bezier(0.22,1,0.36,1) both; }
+    .anim-2 { animation: fadeSlideUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both; }
+    .anim-3 { animation: fadeSlideUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.22s both; }
+
+    /* ─── Left brand panel ─── */
+    .left-panel {
+      flex: 0 0 480px;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 48px 56px;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(155deg, #110f2a 0%, #1a1038 45%, #0c1a32 100%);
+      border-right: 1px solid rgba(255,255,255,0.05);
+    }
+    @media(min-width:960px){ .left-panel { display: flex; } }
+
+    .orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(70px); pointer-events: none;
+    }
+    .orb-1 { width:400px;height:400px;top:-80px;left:-80px;background:radial-gradient(circle,rgba(124,92,252,0.25),transparent 70%);animation:floatY 10s ease-in-out infinite; }
+    .orb-2 { width:300px;height:300px;bottom:-60px;right:-60px;background:radial-gradient(circle,rgba(62,207,207,0.18),transparent 70%);animation:floatY 14s ease-in-out infinite reverse; }
+    .orb-3 { width:200px;height:200px;top:50%;left:60%;background:radial-gradient(circle,rgba(180,79,255,0.12),transparent 70%);animation:floatY 8s ease-in-out 4s infinite; }
+
+    .grid-lines {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(124,92,252,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,92,252,0.05) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+
+    /* DSG logo image on left panel */
+    .dsg-logo-img {
+      height: 52px;
+      object-fit: contain;
+      object-position: left;
+      filter: brightness(0) invert(1);
+    }
+
+    .brand-headline {
+      font-family: 'Maven Pro', sans-serif;
+      font-weight: 900;
+      font-size: clamp(28px, 3vw, 38px);
+      color: #fff;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    .brand-headline em { font-style: normal; background: linear-gradient(90deg,#a07dff,#3ecfcf); -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+
+    /* Feature rows */
+    .feat { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); transition:all 0.2s; }
+    .feat:hover { background:rgba(124,92,252,0.1); border-color:rgba(124,92,252,0.25); }
+    .feat-icon { width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
+    .feat-title { color:#fff;font-weight:700;font-size:13px; }
+    .feat-sub { color:rgba(255,255,255,0.4);font-size:11px;margin-top:2px; }
+
+    /* Stat strip */
+    .stat-strip { display:flex; gap:0; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); }
+    .stat-item { flex:1; padding:14px 12px; background:rgba(255,255,255,0.04); text-align:center; border-right:1px solid rgba(255,255,255,0.06); }
+    .stat-item:last-child { border-right:none; }
+    .stat-num { font-family:'Maven Pro',sans-serif; font-weight:800; font-size:22px; color:#fff; }
+    .stat-lbl { font-size:10px; color:rgba(255,255,255,0.4); margin-top:2px; letter-spacing:0.06em; text-transform:uppercase; }
+
+    /* ─── Right login panel ─── */
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 48px 32px;
+      background: #fff;
+      position: relative;
+    }
+
+    .login-box { width: 100%; max-width: 400px; }
+
+    /* Mobile logo (shown when left panel is hidden) */
+    .mobile-logo { display:flex; align-items:center; gap:14px; margin-bottom:36px; }
+    @media(min-width:960px){ .mobile-logo { display:none; } }
+    .mobile-logo img { height:38px; object-fit:contain; }
+
+    /* Input groups */
+    .input-wrap { position:relative; margin-bottom:18px; }
+    .input-label { display:block; font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; letter-spacing:0.04em; text-transform:uppercase; }
+    .input-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#b0a8d4; font-size:13px; pointer-events:none; z-index:1; }
+    .login-input {
+      width:100%; padding:13px 14px 13px 42px;
+      border:2px solid #ede9f8; border-radius:13px;
+      font-size:14px; font-family:'Montserrat',sans-serif; font-weight:500;
+      background:#fdfcff; color:#1a1830; outline:none;
+      transition:all 0.2s ease;
+      box-shadow:0 2px 8px rgba(124,92,252,0.06);
+    }
+    .login-input:focus {
+      border-color:#7C5CFC;
+      box-shadow:0 0 0 4px rgba(124,92,252,0.14), 0 2px 8px rgba(124,92,252,0.1);
+      background:#fff;
+    }
+    .login-input::placeholder { color:#c4bed8; }
+
+    /* 3D sign-in button */
+    .btn-signin {
+      width:100%; padding:15px 24px;
+      font-family:'Maven Pro','Montserrat',sans-serif;
+      font-weight:800; font-size:15px; letter-spacing:0.06em;
+      color:#fff; border:none; border-radius:14px; cursor:pointer;
+      background:linear-gradient(160deg, #a584ff 0%, #7C5CFC 40%, #5539d4 100%);
+      box-shadow:
+        0 8px 24px rgba(124,92,252,0.5),
+        0 2px 6px rgba(0,0,0,0.18),
+        inset 0 1px 0 rgba(255,255,255,0.28),
+        inset 0 -3px 0 rgba(0,0,0,0.18);
+      transition:all 0.2s ease;
+      position:relative; overflow:hidden;
+      text-shadow:0 1px 3px rgba(0,0,0,0.2);
+    }
+    .btn-signin::after {
+      content:'';
+      position:absolute; top:0;left:0;right:0; height:50%;
+      background:linear-gradient(180deg,rgba(255,255,255,0.18) 0%,transparent 100%);
+      border-radius:14px 14px 0 0; pointer-events:none;
+    }
+    .btn-signin:hover:not(:disabled) {
+      background:linear-gradient(160deg, #b596ff 0%, #8d6dff 40%, #6449e0 100%);
+      box-shadow:0 12px 32px rgba(124,92,252,0.6), 0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.32);
+      transform:translateY(-3px);
+    }
+    .btn-signin:active { transform:translateY(0); box-shadow:0 4px 14px rgba(124,92,252,0.45); }
+    .btn-signin:disabled { opacity:0.65; cursor:not-allowed; transform:none; }
+
+    /* Error box */
+    .error-box {
+      display:none; margin-bottom:18px;
+      padding:12px 16px; border-radius:12px;
+      background:#fff1f2; border:1.5px solid #fecdd3;
+      align-items:center; gap:10px;
+    }
+    .error-box.show { display:flex; }
+
+    /* Decorative right panel bg */
+    .right-panel::before {
+      content:'';
+      position:absolute; inset:0; pointer-events:none;
+      background:
+        radial-gradient(ellipse 60% 50% at 90% 10%, rgba(124,92,252,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 10% 90%, rgba(62,207,207,0.04) 0%, transparent 60%);
+    }
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%)">
+<body>
 
-  <!-- DSG Background pattern -->
-  <div class="fixed inset-0 pointer-events-none" style="background-image:radial-gradient(circle at 25% 25%, rgba(124,92,252,0.1) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(124,92,252,0.05) 0%, transparent 50%)"></div>
+  <!-- ══ LEFT BRAND PANEL ══ -->
+  <div class="left-panel anim-1">
+    <div class="grid-lines"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
 
-  <div class="w-full max-w-sm fade-up">
-
-    <!-- Logo -->
-    <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg" style="background:#7C5CFC; box-shadow: 0 8px 32px rgba(124,92,252,0.4)">
-        <span style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-2px;font-family:system-ui">DSG</span>
+    <div style="position:relative;z-index:1">
+      <!-- Logo -->
+      <div style="margin-bottom:48px">
+        <img
+          src="https://www.digitalsearchgroup.co.uk/wp-content/uploads/2023/09/Logo-1.png.webp"
+          alt="Digital Search Group"
+          class="dsg-logo-img"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='block'"
+        >
+        <div style="display:none">
+          <div style="font-family:'Maven Pro',sans-serif;font-weight:900;font-size:22px;color:#fff;letter-spacing:0.04em">DIGITAL SEARCH</div>
+          <div style="font-family:'Maven Pro',sans-serif;font-weight:500;font-size:13px;color:rgba(255,255,255,0.45);letter-spacing:0.2em">GROUP</div>
+        </div>
       </div>
-      <h1 class="text-white text-2xl font-bold tracking-tight">Digital Search Group</h1>
-      <p class="text-sm mt-1" style="color: rgba(255,255,255,0.5)">Campaign Management System</p>
+
+      <!-- Headline -->
+      <div style="margin-bottom:36px">
+        <h2 class="brand-headline" style="margin-bottom:14px">
+          <em>Authority</em><br>Engineering<br>Platform
+        </h2>
+        <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.75;max-width:340px">
+          End-to-end campaign intelligence — rank tracking, AI visibility, client management and content delivery.
+        </p>
+      </div>
+
+      <!-- Features -->
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:36px">
+        ${[
+          { icon: 'fa-chart-line',  bg: 'rgba(124,92,252,0.18)', ic: '#a07dff', title: 'Real-time Rank Tracking',   sub: 'Google · Bing · AI Overviews' },
+          { icon: 'fa-robot',       bg: 'rgba(62,207,207,0.15)',  ic: '#3ecfcf', title: 'AI & LLM Visibility',      sub: 'ChatGPT · Gemini · Perplexity' },
+          { icon: 'fa-users',       bg: 'rgba(167,139,250,0.15)', ic: '#c084fc', title: 'Client CRM & Proposals',   sub: 'Pipeline · onboarding · billing' },
+          { icon: 'fa-pen-nib',     bg: 'rgba(52,211,153,0.15)',  ic: '#34d399', title: 'Content Intelligence',     sub: 'Briefs · calendar · publishing' },
+        ].map(f=>`
+          <div class="feat">
+            <div class="feat-icon" style="background:${f.bg}"><i class="fas ${f.icon}" style="color:${f.ic}"></i></div>
+            <div><div class="feat-title">${f.title}</div><div class="feat-sub">${f.sub}</div></div>
+          </div>`).join('')}
+      </div>
+
+      <!-- Stats strip -->
+      <div class="stat-strip">
+        <div class="stat-item"><div class="stat-num">∞</div><div class="stat-lbl">Campaigns</div></div>
+        <div class="stat-item"><div class="stat-num">AI</div><div class="stat-lbl">Powered</div></div>
+        <div class="stat-item"><div class="stat-num">24/7</div><div class="stat-lbl">Tracking</div></div>
+      </div>
     </div>
 
-    <!-- Card -->
-    <div class="bg-white rounded-2xl shadow-2xl shadow-black/40 p-8">
-      <h2 class="text-slate-800 text-xl font-bold mb-1">Welcome back</h2>
-      <p class="text-slate-400 text-sm mb-6">Sign in to your account to continue</p>
+    <div style="position:relative;z-index:1;color:rgba(255,255,255,0.2);font-size:11px;letter-spacing:0.04em">
+      &copy; ${year} Digital Search Group &nbsp;&middot;&nbsp; Internal Platform &nbsp;&middot;&nbsp; Confidential
+    </div>
+  </div>
 
-      <div id="errorBox" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
-        <i class="fas fa-triangle-exclamation flex-shrink-0"></i>
-        <span id="errorMsg">Invalid email or password</span>
+  <!-- ══ RIGHT LOGIN PANEL ══ -->
+  <div class="right-panel">
+    <div class="login-box anim-2">
+
+      <!-- Mobile logo (only shows on small screens) -->
+      <div class="mobile-logo">
+        <img
+          src="https://www.digitalsearchgroup.co.uk/wp-content/uploads/2023/09/Logo-1.png.webp"
+          alt="Digital Search Group"
+          style="height:36px;object-fit:contain"
+          onerror="this.style.display='none'"
+        >
+      </div>
+
+      <div style="margin-bottom:32px">
+        <h1 style="font-family:'Maven Pro',sans-serif;font-weight:900;font-size:30px;color:#12111e;letter-spacing:-0.02em;margin-bottom:8px">Welcome back</h1>
+        <p style="color:#94a3b8;font-size:14px;font-weight:500">Sign in to your DSG Campaign Manager</p>
+      </div>
+
+      <!-- Error box -->
+      <div id="errorBox" class="error-box">
+        <i class="fas fa-circle-exclamation" style="color:#e11d48;font-size:16px;flex-shrink:0"></i>
+        <span id="errorMsg" style="color:#be123c;font-size:13px;font-weight:600">Invalid email or password</span>
       </div>
 
       <form id="loginForm" onsubmit="handleLogin(event)">
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="email">Email address</label>
-          <div class="relative">
-            <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-            <input id="email" type="email" autocomplete="email" required
-              class="w-full pl-10 pr-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm text-slate-800 bg-slate-50"
-              placeholder="you@digitalsearchgroup.com.au">
-          </div>
+        <!-- Email -->
+        <div class="input-wrap">
+          <label class="input-label" for="email">Email address</label>
+          <i class="fas fa-envelope input-icon"></i>
+          <input id="email" type="email" autocomplete="email" required class="login-input" placeholder="you@digitalsearchgroup.com.au">
         </div>
 
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="password">Password</label>
-          <div class="relative">
-            <i class="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-            <input id="password" type="password" autocomplete="current-password" required
-              class="w-full pl-10 pr-10 py-2.5 border-2 border-slate-200 rounded-xl text-sm text-slate-800 bg-slate-50"
-              placeholder="••••••••">
-            <button type="button" onclick="togglePw()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-              <i id="pwToggleIcon" class="fas fa-eye text-sm"></i>
-            </button>
-          </div>
+        <!-- Password -->
+        <div class="input-wrap" style="margin-bottom:28px">
+          <label class="input-label" for="password">Password</label>
+          <i class="fas fa-lock input-icon"></i>
+          <input id="password" type="password" autocomplete="current-password" required class="login-input" style="padding-right:46px" placeholder="••••••••••">
+          <button type="button" onclick="togglePw()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#b0a8d4;padding:4px;margin-top:10px">
+            <i id="pwToggleIcon" class="fas fa-eye" style="font-size:14px"></i>
+          </button>
         </div>
 
-        <button type="submit" id="loginBtn"
-          class="btn-login w-full text-white font-bold py-3 rounded-xl text-sm shadow-md" style="background:#7C5CFC">
-          <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+        <button type="submit" id="loginBtn" class="btn-signin anim-3">
+          <i class="fas fa-arrow-right-to-bracket" style="margin-right:10px"></i>Sign In to Dashboard
         </button>
       </form>
-    </div>
 
-    <!-- Footer -->
-    <p class="text-center text-xs mt-6" style="color: rgba(255,255,255,0.3)">
-      &copy; ${new Date().getFullYear()} Digital Search Group &middot; Internal System
-    </p>
+      <div style="margin-top:28px;text-align:center;font-size:12px;color:#d1d5db;font-weight:500">
+        <i class="fas fa-shield-halved" style="margin-right:6px;color:#e2ddff"></i>
+        Internal platform &nbsp;&middot;&nbsp; Authorised personnel only
+      </div>
+    </div>
   </div>
 
   <script>
   function togglePw() {
     const pw = document.getElementById('password');
     const icon = document.getElementById('pwToggleIcon');
-    if (pw.type === 'password') { pw.type = 'text'; icon.className = 'fas fa-eye-slash text-sm'; }
-    else { pw.type = 'password'; icon.className = 'fas fa-eye text-sm'; }
+    if (pw.type === 'password') { pw.type = 'text'; icon.className = 'fas fa-eye-slash'; }
+    else { pw.type = 'password'; icon.className = 'fas fa-eye'; }
   }
 
   async function handleLogin(e) {
@@ -1433,9 +1935,9 @@ function getLoginPageHTML(): string {
     const btn = document.getElementById('loginBtn');
     const errBox = document.getElementById('errorBox');
     const errMsg = document.getElementById('errorMsg');
-    errBox.classList.add('hidden');
+    errBox.classList.remove('show');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing in...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:10px"></i>Signing in\u2026';
 
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -1443,33 +1945,25 @@ function getLoginPageHTML(): string {
     try {
       const res = await axios.post('/api/auth/login', { email, password });
       const { token, user } = res.data;
-
-      // Store token in localStorage for SPA
+      btn.innerHTML = '<i class="fas fa-check" style="margin-right:10px"></i>Success!';
       localStorage.setItem('dsg_token', token);
       localStorage.setItem('dsg_user', JSON.stringify(user));
-
-      // Redirect – force password change if flagged
-      if (user.force_password_change) {
-        window.location.href = '/?change_password=1';
-      } else {
-        window.location.href = '/';
-      }
+      setTimeout(() => {
+        if (user.force_password_change) { window.location.href = '/?change_password=1'; }
+        else { window.location.href = '/'; }
+      }, 400);
     } catch (err) {
       const msg = err?.response?.data?.error || 'Invalid email or password. Please try again.';
       errMsg.textContent = msg;
-      errBox.classList.remove('hidden');
+      errBox.classList.add('show');
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Sign In';
-      // Shake animation
-      const card = errBox.closest('.bg-white');
-      card.style.animation = 'none';
-      card.style.transform = 'translateX(-6px)';
-      setTimeout(() => { card.style.transform = 'translateX(6px)'; }, 80);
-      setTimeout(() => { card.style.transform = 'translateX(0)'; card.style.transition = 'transform 0.15s'; }, 160);
+      btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket" style="margin-right:10px"></i>Sign In to Dashboard';
+      const form = document.getElementById('loginForm');
+      form.animate([{transform:'translateX(-7px)'},{transform:'translateX(7px)'},{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'translateX(0)'}],{duration:300,easing:'ease-out'});
     }
   }
 
-  // If already logged in, redirect to app
+  // If already logged in, redirect
   const stored = localStorage.getItem('dsg_token');
   if (stored) {
     axios.get('/api/auth/me', { headers: { Authorization: 'Bearer ' + stored } })

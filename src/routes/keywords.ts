@@ -74,12 +74,21 @@ keywordsRoutes.put('/:id', async (c) => {
   const id = c.req.param('id')
   const db = c.env.DB
   const body = await c.req.json()
-  const { keyword, target_url, keyword_group, priority, is_tracking } = body
+
+  const existing = await db.prepare('SELECT * FROM keywords WHERE id = ?').bind(id).first() as any
+  if (!existing) return c.json({ error: 'Keyword not found' }, 404)
 
   await db.prepare(`
     UPDATE keywords SET keyword=?, target_url=?, keyword_group=?, priority=?, is_tracking=?
     WHERE id=?
-  `).bind(keyword, target_url, keyword_group, priority, is_tracking ?? 1, id).run()
+  `).bind(
+    body.keyword ?? existing.keyword,
+    body.target_url ?? existing.target_url,
+    body.keyword_group ?? existing.keyword_group,
+    body.priority ?? existing.priority,
+    body.is_tracking ?? existing.is_tracking ?? 1,
+    id
+  ).run()
 
   return c.json({ message: 'Keyword updated' })
 })

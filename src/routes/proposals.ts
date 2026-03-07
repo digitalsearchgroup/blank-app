@@ -136,6 +136,9 @@ proposalsRoutes.put('/:id', async (c) => {
   const body = await c.req.json()
   const now = new Date().toISOString()
 
+  const existing = await db.prepare('SELECT * FROM proposals WHERE id = ?').bind(id).first() as any
+  if (!existing) return c.json({ error: 'Proposal not found' }, 404)
+
   await db.prepare(`
     UPDATE proposals SET
       title=?, proposal_type=?, monthly_investment=?, contract_length=?,
@@ -146,14 +149,26 @@ proposalsRoutes.put('/:id', async (c) => {
       updated_at=?
     WHERE id=?
   `).bind(
-    body.title, body.proposal_type, body.monthly_investment, body.contract_length,
-    body.scope_summary || '', body.deliverables || '', body.target_keywords || '',
-    body.competitor_domains || '', body.target_locations || '',
-    body.goals || '', body.baseline_data || '', body.setup_fee || 0,
-    body.content_items_count || 0, body.press_releases_count || 0,
-    body.social_posts_count || 0, body.tools_count || 0,
-    body.wordpress_hours || 0, body.reporting_frequency || 'monthly',
-    body.account_manager || '', now, id
+    body.title ?? existing.title,
+    body.proposal_type ?? existing.proposal_type,
+    body.monthly_investment ?? existing.monthly_investment,
+    body.contract_length ?? existing.contract_length,
+    body.scope_summary ?? existing.scope_summary ?? '',
+    body.deliverables ?? existing.deliverables ?? '',
+    body.target_keywords ?? existing.target_keywords ?? '',
+    body.competitor_domains ?? existing.competitor_domains ?? '',
+    body.target_locations ?? existing.target_locations ?? '',
+    body.goals ?? existing.goals ?? '',
+    body.baseline_data ?? existing.baseline_data ?? '',
+    body.setup_fee ?? existing.setup_fee ?? 0,
+    body.content_items_count ?? existing.content_items_count ?? 0,
+    body.press_releases_count ?? existing.press_releases_count ?? 0,
+    body.social_posts_count ?? existing.social_posts_count ?? 0,
+    body.tools_count ?? existing.tools_count ?? 0,
+    body.wordpress_hours ?? existing.wordpress_hours ?? 0,
+    body.reporting_frequency ?? existing.reporting_frequency ?? 'monthly',
+    body.account_manager ?? existing.account_manager ?? '',
+    now, id
   ).run()
 
   // Update line items if provided

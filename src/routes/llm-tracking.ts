@@ -18,8 +18,8 @@ async function callDataForSEO(login: string, password: string, endpoint: string,
   return response.json()
 }
 
-// GET all LLM prompts for a campaign
-llmRoutes.get('/prompts', async (c) => {
+// Shared handler for listing LLM prompts
+async function getLlmPrompts(c: any) {
   const db = c.env.DB
   const campaignId = c.req.query('campaign_id')
   const clientId = c.req.query('client_id')
@@ -40,7 +40,13 @@ llmRoutes.get('/prompts', async (c) => {
   const stmt = params.length ? db.prepare(q).bind(...params) : db.prepare(q)
   const prompts = await stmt.all()
   return c.json(prompts.results)
-})
+}
+
+// GET all LLM prompts — root alias so /api/llm and /api/llm/prompts both work
+llmRoutes.get('/', (c) => getLlmPrompts(c))
+
+// GET all LLM prompts for a campaign
+llmRoutes.get('/prompts', (c) => getLlmPrompts(c))
 
 // GET LLM mention history for a prompt
 llmRoutes.get('/prompts/:id/history', async (c) => {
@@ -71,8 +77,20 @@ llmRoutes.post('/prompts', async (c) => {
 })
 
 // POST track LLM mentions for a campaign using DataForSEO LLM Mentions API
+// Accepts both /track/:campaignId (URL param) and /track-campaign (body: {campaign_id})
+llmRoutes.post('/track-campaign', async (c) => {
+  const body = await c.req.json().catch(() => ({})) as any
+  const campaignId = body.campaign_id?.toString()
+  if (!campaignId) return c.json({ error: 'campaign_id required' }, 400)
+  return trackLlmForCampaign(c, campaignId)
+})
+
 llmRoutes.post('/track/:campaignId', async (c) => {
   const campaignId = c.req.param('campaignId')
+  return trackLlmForCampaign(c, campaignId)
+})
+
+async function trackLlmForCampaign(c: any, campaignId: string) {
   const db = c.env.DB
   const login = c.env.DATAFORSEO_LOGIN
   const password = c.env.DATAFORSEO_PASSWORD
@@ -146,7 +164,7 @@ llmRoutes.post('/track/:campaignId', async (c) => {
   }
 
   return c.json({ tracked: tracked.length, results: tracked, errors })
-})
+}
 
 // GET LLM visibility summary for a campaign
 llmRoutes.get('/summary/:campaignId', async (c) => {
@@ -191,12 +209,21 @@ llmRoutes.put('/prompts/:id', async (c) => {
   const id = c.req.param('id')
   const db = c.env.DB
   const body = await c.req.json()
-  const { prompt_text, prompt_category, target_brand, llm_model, is_tracking } = body
+
+  const existing = await db.prepare('SELECT * FROM llm_prompts WHERE id = ?').bind(id).first() as any
+  if (!existing) return c.json({ error: 'Prompt not found' }, 404)
 
   await db.prepare(`
     UPDATE llm_prompts SET prompt_text=?, prompt_category=?, target_brand=?, llm_model=?, is_tracking=?
     WHERE id=?
-  `).bind(prompt_text, prompt_category, target_brand, llm_model, is_tracking ?? 1, id).run()
+  `).bind(
+    body.prompt_text ?? existing.prompt_text,
+    body.prompt_category ?? existing.prompt_category,
+    body.target_brand ?? existing.target_brand,
+    body.llm_model ?? existing.llm_model,
+    body.is_tracking ?? existing.is_tracking ?? 1,
+    id
+  ).run()
 
   return c.json({ message: 'Prompt updated' })
 })
