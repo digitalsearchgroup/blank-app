@@ -78,46 +78,60 @@ clientsRoutes.post('/', async (c) => {
     return c.json({ error: 'company_name, contact_email, and website are required' }, 400)
   }
 
-  const result = await db.prepare(`
-    INSERT INTO clients (
-      company_name, contact_name, contact_email, contact_phone, website,
-      industry, location, timezone, monthly_budget, notes, status,
-      abn, address, city, state, postcode, country, account_manager,
-      referral_source, contract_start, contract_end,
-      linkedin_url, facebook_url, instagram_handle,
-      google_business_id, ga4_property_id, gsc_property,
-      cms_platform, hosting_provider,
-      secondary_contact_name, secondary_contact_email
-    ) VALUES (
-      ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?,
-      ?, ?, ?,
-      ?, ?, ?,
-      ?, ?,
-      ?, ?
-    )
-  `).bind(
-    body.company_name, body.contact_name || '', body.contact_email,
-    body.contact_phone || '', body.website,
-    body.industry || '', body.location || '', body.timezone || 'Australia/Sydney',
-    body.monthly_budget || 0, body.notes || '', body.status || 'prospect',
-    body.abn || '', body.address || '', body.city || '',
-    body.state || '', body.postcode || '', body.country || 'Australia',
-    body.account_manager || '', body.referral_source || '',
-    body.contract_start || null, body.contract_end || null,
-    body.linkedin_url || '', body.facebook_url || '', body.instagram_handle || '',
-    body.google_business_id || '', body.ga4_property_id || '', body.gsc_property || '',
-    body.cms_platform || 'wordpress', body.hosting_provider || '',
-    body.secondary_contact_name || '', body.secondary_contact_email || ''
-  ).run()
+  // Check for duplicate contact_email before inserting
+  const existing = await db.prepare('SELECT id, company_name FROM clients WHERE contact_email = ?').bind(body.contact_email).first() as any
+  if (existing) {
+    return c.json({ error: `A client with email "${body.contact_email}" already exists (${existing.company_name}). Please use a different email address.` }, 409)
+  }
 
-  await db.prepare(
-    "INSERT INTO activity_log (client_id, activity_type, description) VALUES (?, 'client_created', ?)"
-  ).bind(result.meta.last_row_id, `New client created: ${body.company_name}`).run()
+  try {
+    const result = await db.prepare(`
+      INSERT INTO clients (
+        company_name, contact_name, contact_email, contact_phone, website,
+        industry, location, timezone, monthly_budget, notes, status,
+        abn, address, city, state, postcode, country, account_manager,
+        referral_source, contract_start, contract_end,
+        linkedin_url, facebook_url, instagram_handle,
+        google_business_id, ga4_property_id, gsc_property,
+        cms_platform, hosting_provider,
+        secondary_contact_name, secondary_contact_email
+      ) VALUES (
+        ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?,
+        ?, ?, ?,
+        ?, ?, ?,
+        ?, ?,
+        ?, ?
+      )
+    `).bind(
+      body.company_name, body.contact_name || '', body.contact_email,
+      body.contact_phone || '', body.website,
+      body.industry || '', body.location || '', body.timezone || 'Australia/Sydney',
+      body.monthly_budget || 0, body.notes || '', body.status || 'prospect',
+      body.abn || '', body.address || '', body.city || '',
+      body.state || '', body.postcode || '', body.country || 'Australia',
+      body.account_manager || '', body.referral_source || '',
+      body.contract_start || null, body.contract_end || null,
+      body.linkedin_url || '', body.facebook_url || '', body.instagram_handle || '',
+      body.google_business_id || '', body.ga4_property_id || '', body.gsc_property || '',
+      body.cms_platform || 'wordpress', body.hosting_provider || '',
+      body.secondary_contact_name || '', body.secondary_contact_email || ''
+    ).run()
 
-  return c.json({ id: result.meta.last_row_id, message: 'Client created' }, 201)
+    await db.prepare(
+      "INSERT INTO activity_log (client_id, activity_type, description) VALUES (?, 'client_created', ?)"
+    ).bind(result.meta.last_row_id, `New client created: ${body.company_name}`).run()
+
+    return c.json({ id: result.meta.last_row_id, message: 'Client created' }, 201)
+  } catch (err: any) {
+    // Handle SQLite unique constraint violation gracefully
+    if (err?.message?.includes('UNIQUE constraint failed')) {
+      return c.json({ error: `A client with that email address already exists. Please use a different email.` }, 409)
+    }
+    throw err
+  }
 })
 
 // PUT update client - full update
@@ -170,17 +184,29 @@ clientsRoutes.patch('/:id/sync-campaign-dates', async (c) => {
   const { start_date } = body
   if (!start_date) return c.json({ error: 'start_date required' }, 400)
 
+  const now = new Date().toISOString()
+
   // Update all active campaigns for this client
-  const result = await db.prepare(`
+  const campaignResult = await db.prepare(`
     UPDATE campaigns SET start_date = ?, updated_at = ?
-    WHERE client_id = ? AND status = 'active'
-  `).bind(start_date, new Date().toISOString(), id).run()
+    WHERE client_id = ? AND status = 'active' AND is_archived = 0
+  `).bind(start_date, now, id).run()
+
+  // Also update campaign plans linked to this client so the "launch date" stays in sync
+  const planResult = await db.prepare(`
+    UPDATE campaign_plans SET start_date = ?, updated_at = ?
+    WHERE client_id = ?
+  `).bind(start_date, now, id).run()
 
   await db.prepare(
     "INSERT INTO activity_log (client_id, activity_type, description) VALUES (?, 'campaign_dates_synced', ?)"
-  ).bind(id, `Campaign start dates synced to ${start_date}`).run()
+  ).bind(id, `Campaign start dates synced to ${start_date} (${campaignResult.meta.changes} campaign(s), ${planResult.meta.changes} plan(s))`).run()
 
-  return c.json({ message: 'Campaign start dates synced', updated: result.meta.changes })
+  return c.json({
+    message: 'Campaign start dates synced',
+    campaigns_updated: campaignResult.meta.changes,
+    plans_updated: planResult.meta.changes,
+  })
 })
 
 // ── POST /api/clients/:id/archive ───────────────────────────

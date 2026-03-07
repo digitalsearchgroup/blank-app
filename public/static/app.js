@@ -3331,7 +3331,10 @@ async function saveNewClient() {
     state.clients = []; state._clientsLoaded = false;
     toast('Client added!');
     navigate('clients');
-  } catch (e) { toast('Failed to save client', 'error'); }
+  } catch (e) {
+    const msg = e?.response?.data?.error || 'Failed to save client';
+    toast(msg, 'error');
+  }
 }
 
 async function saveEditClient(id) {
@@ -3346,14 +3349,21 @@ async function saveEditClient(id) {
   try {
     await API.put('/clients/' + id, data);
 
-    // If contract_start changed, offer to sync campaign start_date too
-    if (data.contract_start && data.contract_start !== state.editingClient?.contract_start) {
-      const syncCampaigns = confirm(
-        `Contract start date set to ${data.contract_start}.\n\nSync this as the start date for all active campaigns for this client?\n\n(Note: to reschedule campaign plan task dates, use the "Reschedule Plan" button on the task board.)`
-      );
+    // If contract_start is set, offer to sync campaign start_date too
+    // (always offer when contract_start has a value, regardless of whether it changed)
+    if (data.contract_start) {
+      const prevDate = state.editingClient?.contract_start;
+      const dateChanged = data.contract_start !== prevDate;
+      const syncMsg = dateChanged
+        ? `Contract start date updated to ${data.contract_start}.\n\nSync this as the launch date for all active campaigns and campaign plans for this client?`
+        : `Contract start date is set to ${data.contract_start}.\n\nSync this as the launch date for all active campaigns and campaign plans for this client?\n\n(This will update the "Started" date shown on all campaigns.)`;
+      const syncCampaigns = confirm(syncMsg);
       if (syncCampaigns) {
         try {
-          await API.patch(`/clients/${id}/sync-campaign-dates`, { start_date: data.contract_start });
+          const syncRes = await API.patch(`/clients/${id}/sync-campaign-dates`, { start_date: data.contract_start });
+          const updated = syncRes?.data;
+          const detail = updated ? ` (${updated.campaigns_updated || 0} campaign(s), ${updated.plans_updated || 0} plan(s) updated)` : '';
+          toast(`Launch dates synced${detail}`);
         } catch (e) { toast('Client updated, but campaign sync failed', 'warning'); }
       }
     }
@@ -3373,7 +3383,10 @@ async function saveEditClient(id) {
     }
 
     navigate('clients');
-  } catch (e) { toast('Failed to update client', 'error'); }
+  } catch (e) {
+    const msg = e?.response?.data?.error || 'Failed to update client';
+    toast(msg, 'error');
+  }
 }
 
 async function deleteClient(id) {
