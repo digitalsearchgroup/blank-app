@@ -6,6 +6,17 @@ export const clientsRoutes = new Hono<{ Bindings: Bindings }>()
 // GET all clients
 clientsRoutes.get('/', async (c) => {
   const db = c.env.DB
+  // include_archived=1 shows archived clients; default hides them
+  const includeArchived = c.req.query('include_archived') === '1'
+  const archivedOnly = c.req.query('archived_only') === '1'
+
+  let whereClause = ''
+  if (archivedOnly) {
+    whereClause = 'WHERE c.is_archived = 1'
+  } else if (!includeArchived) {
+    whereClause = 'WHERE c.is_archived = 0'
+  }
+
   const clients = await db.prepare(`
     SELECT c.*,
       COUNT(DISTINCT ca.id) as campaign_count,
@@ -13,11 +24,12 @@ clientsRoutes.get('/', async (c) => {
       COUNT(DISTINCT p.id) as proposal_count,
       (SELECT SUM(amount) FROM payments WHERE client_id = c.id AND status = 'succeeded') as total_paid
     FROM clients c
-    LEFT JOIN campaigns ca ON ca.client_id = c.id AND ca.status = 'active'
+    LEFT JOIN campaigns ca ON ca.client_id = c.id AND ca.status = 'active' AND ca.is_archived = 0
     LEFT JOIN keywords k ON k.client_id = c.id
     LEFT JOIN proposals p ON p.client_id = c.id
+    ${whereClause}
     GROUP BY c.id
-    ORDER BY c.company_name ASC
+    ORDER BY c.is_archived ASC, c.company_name ASC
   `).all()
   return c.json(clients.results)
 })
@@ -169,6 +181,108 @@ clientsRoutes.patch('/:id/sync-campaign-dates', async (c) => {
   ).bind(id, `Campaign start dates synced to ${start_date}`).run()
 
   return c.json({ message: 'Campaign start dates synced', updated: result.meta.changes })
+})
+
+// ── POST /api/clients/:id/archive ───────────────────────────
+// Archive a client: soft-hides client + all their campaigns + pauses plan tasks
+clientsRoutes.post('/:id/archive', async (c) => {
+  const id = c.req.param('id')
+  const db = c.env.DB
+  const body = await c.req.json() as any
+  const { reason, note, performed_by } = body
+  const now = new Date().toISOString()
+
+  const client = await db.prepare('SELECT * FROM clients WHERE id = ?').bind(id).first() as any
+  if (!client) return c.json({ error: 'Client not found' }, 404)
+  if (client.is_archived) return c.json({ error: 'Client is already archived' }, 409)
+
+  // Archive the client
+  await db.prepare(`
+    UPDATE clients SET is_archived=1, archived_at=?, archived_reason=?, archived_by=?, archive_note=?, updated_at=?
+    WHERE id=?
+  `).bind(now, reason || 'other', performed_by || '', note || '', now, id).run()
+
+  // Archive all campaigns for this client
+  const campResult = await db.prepare(`
+    UPDATE campaigns SET is_archived=1, archived_at=?, archived_reason=?, archived_by=?, updated_at=?
+    WHERE client_id=? AND is_archived=0
+  `).bind(now, reason || 'other', performed_by || '', now, id).run()
+  const campaignsAffected = campResult.meta.changes as number
+
+  // Count how many plan tasks exist for this client (for reporting)
+  const planCount = await db.prepare(
+    'SELECT COUNT(*) as cnt FROM campaign_plans WHERE client_id=?'
+  ).bind(id).first() as any
+
+  // Log the archive action
+  await db.prepare(`
+    INSERT INTO client_archive_log (client_id, action, reason, note, performed_by, campaigns_affected, plans_affected)
+    VALUES (?, 'archived', ?, ?, ?, ?, ?)
+  `).bind(id, reason || 'other', note || '', performed_by || '', campaignsAffected, planCount?.cnt || 0).run()
+
+  await db.prepare(
+    "INSERT INTO activity_log (client_id, activity_type, description) VALUES (?, 'client_archived', ?)"
+  ).bind(id, `Client archived – reason: ${reason || 'other'}. ${campaignsAffected} campaign(s) also archived.`).run()
+
+  return c.json({
+    message: 'Client archived successfully',
+    campaigns_archived: campaignsAffected,
+    plans_count: planCount?.cnt || 0,
+  })
+})
+
+// ── POST /api/clients/:id/restore ───────────────────────────
+// Restore a previously archived client and optionally their campaigns
+clientsRoutes.post('/:id/restore', async (c) => {
+  const id = c.req.param('id')
+  const db = c.env.DB
+  const body = await c.req.json() as any
+  const { restore_campaigns = true, performed_by } = body
+  const now = new Date().toISOString()
+
+  const client = await db.prepare('SELECT * FROM clients WHERE id = ?').bind(id).first() as any
+  if (!client) return c.json({ error: 'Client not found' }, 404)
+  if (!client.is_archived) return c.json({ error: 'Client is not archived' }, 409)
+
+  // Restore client
+  await db.prepare(`
+    UPDATE clients SET is_archived=0, archived_at=NULL, archived_reason=NULL, archived_by=NULL, archive_note=NULL, updated_at=?
+    WHERE id=?
+  `).bind(now, id).run()
+
+  let campaignsRestored = 0
+  if (restore_campaigns) {
+    const campResult = await db.prepare(`
+      UPDATE campaigns SET is_archived=0, archived_at=NULL, archived_reason=NULL, archived_by=NULL, updated_at=?
+      WHERE client_id=? AND is_archived=1
+    `).bind(now, id).run()
+    campaignsRestored = campResult.meta.changes as number
+  }
+
+  // Log the restore action
+  await db.prepare(`
+    INSERT INTO client_archive_log (client_id, action, reason, note, performed_by, campaigns_affected, plans_affected)
+    VALUES (?, 'restored', 'manual_restore', ?, ?, ?, 0)
+  `).bind(id, `Restored by ${performed_by || 'team'}`, performed_by || '', campaignsRestored).run()
+
+  await db.prepare(
+    "INSERT INTO activity_log (client_id, activity_type, description) VALUES (?, 'client_restored', ?)"
+  ).bind(id, `Client restored from archive. ${campaignsRestored} campaign(s) also restored.`).run()
+
+  return c.json({
+    message: 'Client restored successfully',
+    campaigns_restored: campaignsRestored,
+  })
+})
+
+// ── GET /api/clients/:id/archive-log ────────────────────────
+clientsRoutes.get('/:id/archive-log', async (c) => {
+  const id = c.req.param('id')
+  const db = c.env.DB
+  const log = await db.prepare(
+    'SELECT * FROM client_archive_log WHERE client_id=? ORDER BY performed_at DESC'
+  ).bind(id).all()
+  return c.json(log.results)
 })
 
 // DELETE client

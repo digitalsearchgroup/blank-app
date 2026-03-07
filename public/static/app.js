@@ -59,6 +59,7 @@ function statusBadge(status) {
     prospect: ['bg-yellow-100 text-yellow-700', 'Prospect'],
     paused: ['bg-gray-100 text-gray-500', 'Paused'],
     churned: ['bg-red-100 text-red-600', 'Churned'],
+    archived: ['bg-slate-200 text-slate-600', '🗄 Archived'],
     draft: ['bg-gray-100 text-gray-600', 'Draft'],
     sent: ['bg-blue-100 text-blue-700', 'Sent'],
     approved: ['bg-green-100 text-green-700', 'Approved'],
@@ -513,10 +514,11 @@ function activityIcon(type) {
 // CLIENTS
 // ==============================
 function renderClients() {
-  if (!state.clients.length) { loadClients(); return loading(); }
+  if (!state.clients.length && !state._clientsLoaded) { loadClients(); return loading(); }
+  const showArchived = state.showArchivedClients || false;
   return `
     <div class="space-y-4">
-      <div class="flex gap-3 flex-wrap">
+      <div class="flex gap-3 flex-wrap items-center">
         <input type="text" id="clientSearch" placeholder="Search clients..." class="input-field max-w-xs" oninput="filterClients(this.value)">
         <select id="clientStatusFilter" class="input-field w-40" onchange="filterClients()">
           <option value="">All Statuses</option>
@@ -525,10 +527,21 @@ function renderClients() {
           <option value="paused">Paused</option>
           <option value="churned">Churned</option>
         </select>
+        <button onclick="toggleArchivedClients()" class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition ${showArchived ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+          <i class="fas fa-archive text-xs"></i>
+          ${showArchived ? 'Hide Archived' : 'Show Archived'}
+          ${state.archivedClientCount > 0 ? `<span class="ml-1 px-1.5 py-0.5 rounded-full text-xs ${showArchived ? 'bg-white/20' : 'bg-slate-300 text-slate-700'}">${state.archivedClientCount}</span>` : ''}
+        </button>
       </div>
+      ${showArchived ? `
+        <div class="flex items-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600">
+          <i class="fas fa-archive text-slate-400"></i>
+          <span>Showing archived clients. Their data is preserved and can be restored at any time.</span>
+        </div>` : ''}
       <div id="clientsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         ${renderClientCards(state.clients)}
       </div>
+      ${!state.clients.length ? '<div class="text-center py-12 text-gray-400"><i class="fas fa-users text-4xl mb-3 block opacity-30"></i><p>No clients found</p></div>' : ''}
     </div>
   `;
 }
@@ -557,29 +570,35 @@ function renderClientCards(clients) {
   };
   return clients.map(cl => {
     const obStatus = cl.onboarding_status || 'not_sent';
+    const isArchived = cl.is_archived == 1;
     return `
-    <div class="card hover:shadow-md transition">
+    <div class="card hover:shadow-md transition ${isArchived ? 'opacity-60 bg-slate-50 border-slate-200' : ''}">
+      ${isArchived ? `<div class="flex items-center gap-2 mb-3 px-3 py-2 bg-slate-100 rounded-lg">
+        <i class="fas fa-archive text-slate-400 text-xs"></i>
+        <span class="text-xs text-slate-500 font-medium">Archived ${cl.archived_at ? '· ' + cl.archived_at.slice(0,10) : ''}</span>
+        <button onclick="restoreClient(${cl.id})" class="ml-auto text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-undo mr-1"></i>Restore</button>
+      </div>` : ''}
       <div class="flex items-start justify-between mb-3">
-        <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-700 cursor-pointer" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">
+        <div class="w-10 h-10 rounded-xl ${isArchived ? 'bg-slate-200' : 'bg-blue-100'} flex items-center justify-center font-bold ${isArchived ? 'text-slate-500' : 'text-blue-700'} cursor-pointer" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">
           ${cl.company_name.charAt(0)}
         </div>
         <div class="flex items-center gap-2">
-          ${statusBadge(cl.status)}
-          <button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' class="text-gray-300 hover:text-blue-500 transition p-1"><i class="fas fa-edit text-xs"></i></button>
+          ${isArchived ? statusBadge('archived') : statusBadge(cl.status)}
+          ${!isArchived ? `<button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' class="text-gray-300 hover:text-blue-500 transition p-1"><i class="fas fa-edit text-xs"></i></button>` : ''}
         </div>
       </div>
-      <h3 class="font-semibold text-gray-900 cursor-pointer hover:text-blue-600" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">${cl.company_name}</h3>
+      <h3 class="font-semibold ${isArchived ? 'text-slate-600' : 'text-gray-900'} cursor-pointer hover:text-blue-600" onclick="navigate('client_detail', {selectedClient: ${JSON.stringify(cl).replace(/"/g, '&quot;')}})">${cl.company_name}</h3>
       <p class="text-sm text-gray-500 mt-0.5">${cl.website}</p>
       <p class="text-xs text-gray-400 mt-0.5">${cl.industry || ''} ${cl.location ? '· ' + cl.location : ''}</p>
       <div class="mt-3 pt-3 border-t border-gray-50 flex gap-3 text-xs text-gray-500 flex-wrap items-center">
         <span><i class="fas fa-rocket mr-1"></i>${cl.campaign_count || 0} campaigns</span>
         <span><i class="fas fa-key mr-1"></i>${cl.keyword_count || 0} keywords</span>
-        ${cl.monthly_budget ? `<span class="ml-auto font-semibold text-gray-700">${fmtCurrencyFor(cl.monthly_budget, cl.country)}/mo</span>` : ''}
+        ${cl.monthly_budget && !isArchived ? `<span class="ml-auto font-semibold text-gray-700">${fmtCurrencyFor(cl.monthly_budget, cl.country)}/mo</span>` : ''}
       </div>
-      <div class="mt-2 flex items-center gap-1.5 text-xs ${obColors[obStatus] || 'text-gray-400'}">
+      ${!isArchived ? `<div class="mt-2 flex items-center gap-1.5 text-xs ${obColors[obStatus] || 'text-gray-400'}">
         <i class="fas ${obIcons[obStatus] || 'fa-clipboard'} text-xs"></i>
         <span>${obLabels[obStatus] || 'Not Onboarded'}</span>
-      </div>
+      </div>` : `<div class="mt-2 text-xs text-slate-400 italic">${cl.archive_note ? '"' + cl.archive_note + '"' : 'No reason noted'}</div>`}
     </div>
   `;}).join('');
 }
@@ -610,10 +629,34 @@ function renderClientDetail() {
         <button onclick="navigate('clients')" class="hover:text-blue-600"><i class="fas fa-arrow-left mr-1"></i>Clients</button>
         <i class="fas fa-chevron-right text-xs"></i>
         <span class="text-gray-900 font-medium">${cl.company_name}</span>
+        ${cl.is_archived ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-600"><i class="fas fa-archive"></i> Archived</span>' : ''}
       </div>
 
-      <!-- Onboarding Status Banner -->
-      <div class="border rounded-xl px-5 py-4 flex items-center gap-4 ${ob.cls}">
+      <!-- Archive Banner (shown when archived) -->
+      ${cl.is_archived ? `
+      <div class="border-2 border-slate-300 rounded-xl px-5 py-4 bg-slate-50 flex items-start gap-4">
+        <div class="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-archive text-slate-500"></i>
+        </div>
+        <div class="flex-1">
+          <div class="font-semibold text-slate-800 text-sm mb-1">This client is archived</div>
+          <div class="text-sm text-slate-600">All project data, reports, keyword rankings, and campaign plans are preserved and read-only.
+          Archived ${cl.archived_at ? 'on ' + cl.archived_at.slice(0,10) : ''} ${cl.archived_by ? 'by ' + cl.archived_by : ''}.
+          ${cl.archive_note ? '<br><span class="italic">"' + cl.archive_note + '"</span>' : ''}
+          </div>
+        </div>
+        <div class="flex flex-col gap-2 flex-shrink-0">
+          <button onclick="restoreClient(${cl.id})" class="btn-primary text-sm whitespace-nowrap">
+            <i class="fas fa-undo mr-2"></i>Restore Client
+          </button>
+          <button onclick="loadArchiveLog(${cl.id})" class="btn-secondary text-xs whitespace-nowrap">
+            <i class="fas fa-history mr-1"></i>Archive History
+          </button>
+        </div>
+      </div>` : ''}
+
+      <!-- Onboarding Status Banner (only for non-archived) -->
+      ${!cl.is_archived ? `<div class="border rounded-xl px-5 py-4 flex items-center gap-4 ${ob.cls}">
         <i class="fas ${ob.icon} text-lg flex-shrink-0"></i>
         <div class="flex-1">
           <span class="font-semibold text-sm">Onboarding: </span>
@@ -621,7 +664,7 @@ function renderClientDetail() {
           ${isBlocked ? '<span class="ml-2 text-xs font-bold uppercase tracking-wide opacity-70">⚠ Campaign tasks on hold</span>' : ''}
         </div>
         ${ob.btn ? `<button onclick="${ob.btnAction}" class="flex-shrink-0 text-xs font-semibold px-4 py-2 rounded-lg border border-current hover:opacity-80 transition-opacity">${ob.btnLabel}</button>` : ''}
-      </div>
+      </div>` : ''}
 
       <!-- Client Header Card -->
       <div class="card">
@@ -641,11 +684,20 @@ function renderClientDetail() {
             </div>
           </div>
           <div class="flex gap-2 flex-wrap">
-            ${statusBadge(cl.status)}
-            <button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' class="btn-secondary text-sm"><i class="fas fa-edit mr-1"></i>Edit Client</button>
-            <button onclick="navigate('new_proposal', {selectedClient: state.selectedClient})" class="btn-primary text-sm">
-              <i class="fas fa-file-plus mr-1"></i>New Proposal
-            </button>
+            ${cl.is_archived ? statusBadge('archived') : statusBadge(cl.status)}
+            ${!cl.is_archived ? `
+              <button onclick='openEditClientModal(${JSON.stringify(cl).replace(/'/g,"&#39;")})' class="btn-secondary text-sm"><i class="fas fa-edit mr-1"></i>Edit Client</button>
+              <button onclick="navigate('new_proposal', {selectedClient: state.selectedClient})" class="btn-primary text-sm">
+                <i class="fas fa-file-plus mr-1"></i>New Proposal
+              </button>
+              <button onclick="openArchiveModal(${cl.id}, '${cl.status}', '${cl.company_name.replace(/'/g,'')}')" class="text-sm px-3 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50 transition font-medium">
+                <i class="fas fa-archive mr-1"></i>Archive
+              </button>
+            ` : `
+              <button onclick="restoreClient(${cl.id})" class="btn-primary text-sm">
+                <i class="fas fa-undo mr-2"></i>Restore Client
+              </button>
+            `}
           </div>
         </div>
 
@@ -3095,10 +3147,28 @@ async function loadDashboard() {
 
 async function loadClients() {
   try {
-    const res = await API.get('/clients');
+    const showArchived = state.showArchivedClients || false;
+    const url = showArchived ? '/clients?archived_only=1' : '/clients';
+    const res = await API.get(url);
     state.clients = res.data;
+    state._clientsLoaded = true;
+    // Also fetch the archived count for the toggle badge (always)
+    if (!showArchived) {
+      try {
+        const arRes = await API.get('/clients?archived_only=1');
+        state.archivedClientCount = arRes.data.length;
+      } catch (_) {}
+    } else {
+      state.archivedClientCount = res.data.length;
+    }
     render();
   } catch (e) { console.error('Clients load failed:', e); }
+}
+
+async function toggleArchivedClients() {
+  state.showArchivedClients = !state.showArchivedClients;
+  state.clients = []; state._clientsLoaded = false;
+  await loadClients();
 }
 
 async function loadClientDetail(id) {
@@ -3261,7 +3331,7 @@ async function saveNewClient() {
   }
   try {
     await API.post('/clients', data);
-    state.clients = [];
+    state.clients = []; state._clientsLoaded = false;
     toast('Client added!');
     navigate('clients');
   } catch (e) { toast('Failed to save client', 'error'); }
@@ -3272,28 +3342,39 @@ async function saveEditClient(id) {
   if (!data.company_name || !data.contact_email || !data.website) {
     toast('Company name, email and website are required', 'warning'); return;
   }
+  // Track previous status to detect paused/churned transition
+  const prevStatus = state.editingClient?.status;
+  const newStatus = data.status;
+
   try {
     await API.put('/clients/' + id, data);
+
     // If contract_start changed, offer to sync campaign start_date too
-    if (data.contract_start) {
+    if (data.contract_start && data.contract_start !== state.editingClient?.contract_start) {
       const syncCampaigns = confirm(
         `Contract start date set to ${data.contract_start}.\n\nSync this as the start date for all active campaigns for this client?\n\n(Note: to reschedule campaign plan task dates, use the "Reschedule Plan" button on the task board.)`
       );
       if (syncCampaigns) {
         try {
           await API.patch(`/clients/${id}/sync-campaign-dates`, { start_date: data.contract_start });
-          toast('Client and campaign start dates updated!');
-        } catch (e) {
-          toast('Client updated, but campaign sync failed', 'warning');
-        }
-      } else {
-        toast('Client updated!');
+        } catch (e) { toast('Client updated, but campaign sync failed', 'warning'); }
       }
-    } else {
-      toast('Client updated!');
     }
-    state.clients = [];
+
+    state.clients = []; state._clientsLoaded = false;
     state.editingClient = null;
+    toast('Client updated!');
+
+    // If status changed TO paused or churned, offer to archive
+    if (['paused','churned'].includes(newStatus) && prevStatus !== newStatus) {
+      // Small delay so toast is visible first
+      setTimeout(() => {
+        openArchiveModal(id, newStatus, data.company_name);
+      }, 400);
+      navigate('clients');
+      return;
+    }
+
     navigate('clients');
   } catch (e) { toast('Failed to update client', 'error'); }
 }
@@ -3302,11 +3383,188 @@ async function deleteClient(id) {
   if (!confirm('Delete this client and all their data? This cannot be undone.')) return;
   try {
     await API.delete('/clients/' + id);
-    state.clients = [];
+    state.clients = []; state._clientsLoaded = false;
     state.editingClient = null;
     toast('Client deleted');
     navigate('clients');
   } catch (e) { toast('Failed to delete client', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ARCHIVE SYSTEM
+// ══════════════════════════════════════════════════════════════
+
+function openArchiveModal(clientId, currentStatus, clientName) {
+  // Inject modal into DOM if not present
+  let modal = document.getElementById('archive_client_modal');
+  if (!modal) {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div id="archive_client_modal" class="modal-overlay hidden">
+        <div class="modal-box p-6 max-w-lg">
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                <i class="fas fa-archive text-slate-500"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900">Archive Client</h3>
+                <p class="text-xs text-gray-500" id="archive_client_subtitle"></p>
+              </div>
+            </div>
+            <button onclick="closeModal('archive_client_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+          </div>
+
+          <!-- What gets archived info box -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5 text-sm text-slate-700 space-y-2">
+            <p class="font-semibold text-slate-800 mb-2"><i class="fas fa-shield-alt mr-2 text-slate-500"></i>What gets archived:</p>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="flex items-center gap-2"><i class="fas fa-check text-green-500"></i>All campaign data & tasks</div>
+              <div class="flex items-center gap-2"><i class="fas fa-check text-green-500"></i>Keyword rankings history</div>
+              <div class="flex items-center gap-2"><i class="fas fa-check text-green-500"></i>Reports & proposals</div>
+              <div class="flex items-center gap-2"><i class="fas fa-check text-green-500"></i>Billing & payment history</div>
+              <div class="flex items-center gap-2"><i class="fas fa-check text-green-500"></i>Campaign plans & tasks</div>
+              <div class="flex items-center gap-2"><i class="fas fa-check text-green-500"></i>Content & media items</div>
+            </div>
+            <p class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-200">
+              <i class="fas fa-info-circle mr-1"></i>
+              Everything is preserved and can be fully restored at any time.
+            </p>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Archive Reason</label>
+              <div class="grid grid-cols-3 gap-2" id="archive_reason_btns">
+                <button onclick="selectArchiveReason('paused')" class="archive-reason-btn px-3 py-2 rounded-xl border-2 border-gray-200 text-sm font-medium hover:border-slate-400 transition text-center" data-reason="paused">
+                  <i class="fas fa-pause-circle block text-lg mb-1 text-gray-400"></i>Paused
+                </button>
+                <button onclick="selectArchiveReason('churned')" class="archive-reason-btn px-3 py-2 rounded-xl border-2 border-gray-200 text-sm font-medium hover:border-red-400 transition text-center" data-reason="churned">
+                  <i class="fas fa-times-circle block text-lg mb-1 text-red-400"></i>Churned
+                </button>
+                <button onclick="selectArchiveReason('other')" class="archive-reason-btn px-3 py-2 rounded-xl border-2 border-gray-200 text-sm font-medium hover:border-slate-400 transition text-center" data-reason="other">
+                  <i class="fas fa-ellipsis-circle block text-lg mb-1 text-gray-400"></i>Other
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Note <span class="text-gray-400 font-normal">(optional)</span></label>
+              <textarea id="archive_note" rows="2" class="input-field resize-none" placeholder="e.g. Client requested a break, will re-engage in Q3..."></textarea>
+            </div>
+          </div>
+
+          <div class="flex gap-3 mt-6">
+            <button onclick="closeModal('archive_client_modal')" class="btn-secondary flex-1">Cancel</button>
+            <button onclick="confirmArchiveClient()" id="archive_confirm_btn"
+              class="flex-1 px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-semibold text-sm transition disabled:opacity-50">
+              <i class="fas fa-archive mr-2"></i>Archive Client
+            </button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(div.firstElementChild);
+    modal = document.getElementById('archive_client_modal');
+  }
+
+  // Pre-select reason based on current status
+  modal.setAttribute('data-client-id', clientId);
+  document.getElementById('archive_client_subtitle').textContent = clientName;
+  document.getElementById('archive_note').value = '';
+
+  // Auto-select reason if paused/churned
+  const autoReason = ['paused','churned'].includes(currentStatus) ? currentStatus : 'other';
+  selectArchiveReason(autoReason);
+  openModal('archive_client_modal');
+}
+
+function selectArchiveReason(reason) {
+  document.querySelectorAll('.archive-reason-btn').forEach(btn => {
+    const isSelected = btn.getAttribute('data-reason') === reason;
+    const colors = { paused: 'border-slate-500 bg-slate-50', churned: 'border-red-500 bg-red-50', other: 'border-slate-500 bg-slate-50' };
+    btn.className = `archive-reason-btn px-3 py-2 rounded-xl border-2 text-sm font-medium transition text-center ${isSelected ? colors[reason] : 'border-gray-200 hover:border-slate-400'}`;
+  });
+  document.getElementById('archive_client_modal').setAttribute('data-reason', reason);
+}
+
+async function confirmArchiveClient() {
+  const modal = document.getElementById('archive_client_modal');
+  const clientId = modal.getAttribute('data-client-id');
+  const reason = modal.getAttribute('data-reason') || 'other';
+  const note = document.getElementById('archive_note').value.trim();
+  const performedBy = state.currentUser?.full_name || state.currentUser?.email || 'team';
+
+  const btn = document.getElementById('archive_confirm_btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Archiving...';
+
+  try {
+    const res = await API.post(`/clients/${clientId}/archive`, { reason, note, performed_by: performedBy });
+    closeModal('archive_client_modal');
+    toast(`Client archived. ${res.data.campaigns_archived} campaign(s) also archived. Restore anytime.`, 'success');
+    // Reset client state and reload
+    state.clients = []; state._clientsLoaded = false;
+    state.selectedClient = null;
+    state.showArchivedClients = false;
+    await loadClients();
+    navigate('clients');
+  } catch (e) {
+    toast(e?.response?.data?.error || 'Failed to archive client', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-archive mr-2"></i>Archive Client';
+  }
+}
+
+async function restoreClient(clientId) {
+  const performedBy = state.currentUser?.full_name || state.currentUser?.email || 'team';
+  if (!confirm('Restore this client and all their campaigns from archive?')) return;
+  try {
+    const res = await API.post(`/clients/${clientId}/restore`, { restore_campaigns: true, performed_by: performedBy });
+    toast(`Client restored! ${res.data.campaigns_restored} campaign(s) re-activated.`);
+    state.clients = []; state._clientsLoaded = false;
+    state.selectedClient = null;
+    await loadClients();
+    navigate('clients');
+  } catch (e) { toast(e?.response?.data?.error || 'Failed to restore client', 'error'); }
+}
+
+async function loadArchiveLog(clientId) {
+  try {
+    const res = await API.get(`/clients/${clientId}/archive-log`);
+    const log = res.data;
+    if (!log.length) { toast('No archive history for this client', 'warning'); return; }
+
+    let html = `<div id="archive_log_modal" class="modal-overlay">
+      <div class="modal-box p-6 max-w-lg">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-900"><i class="fas fa-history mr-2 text-slate-500"></i>Archive History</h3>
+          <button onclick="document.getElementById('archive_log_modal').remove()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-3">
+          ${log.map(entry => `
+            <div class="flex items-start gap-3 p-3 rounded-xl ${entry.action === 'archived' ? 'bg-slate-50 border border-slate-200' : 'bg-green-50 border border-green-200'}">
+              <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${entry.action === 'archived' ? 'bg-slate-200' : 'bg-green-200'}">
+                <i class="fas ${entry.action === 'archived' ? 'fa-archive text-slate-600' : 'fa-undo text-green-600'} text-xs"></i>
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-sm capitalize text-gray-900">${entry.action}</span>
+                  ${entry.reason ? `<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">${entry.reason}</span>` : ''}
+                </div>
+                ${entry.note ? `<p class="text-xs text-gray-500 mt-0.5 italic">"${entry.note}"</p>` : ''}
+                <div class="flex gap-3 text-xs text-gray-400 mt-1">
+                  <span><i class="fas fa-user mr-1"></i>${entry.performed_by || 'System'}</span>
+                  <span><i class="fas fa-clock mr-1"></i>${entry.performed_at?.slice(0,16).replace('T',' ')}</span>
+                  ${entry.campaigns_affected ? `<span><i class="fas fa-rocket mr-1"></i>${entry.campaigns_affected} campaigns</span>` : ''}
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <button onclick="document.getElementById('archive_log_modal').remove()" class="btn-secondary w-full mt-4">Close</button>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+  } catch (e) { toast('Failed to load archive history', 'error'); }
 }
 
 // Campaign actions

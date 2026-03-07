@@ -6,19 +6,23 @@ export const campaignsRoutes = new Hono<{ Bindings: Bindings }>()
 campaignsRoutes.get('/', async (c) => {
   const db = c.env.DB
   const clientId = c.req.query('client_id')
+  const includeArchived = c.req.query('include_archived') === '1'
+  const archivedClause = includeArchived ? '' : 'AND ca.is_archived = 0'
+
   const q = clientId
     ? `SELECT ca.*, cl.company_name, cl.website, COUNT(DISTINCT k.id) as keyword_count, COUNT(DISTINCT ci.id) as content_count
        FROM campaigns ca
        JOIN clients cl ON ca.client_id = cl.id
        LEFT JOIN keywords k ON k.campaign_id = ca.id
        LEFT JOIN content_items ci ON ci.campaign_id = ca.id
-       WHERE ca.client_id = ?
+       WHERE ca.client_id = ? ${archivedClause}
        GROUP BY ca.id ORDER BY ca.created_at DESC`
     : `SELECT ca.*, cl.company_name, cl.website, COUNT(DISTINCT k.id) as keyword_count, COUNT(DISTINCT ci.id) as content_count
        FROM campaigns ca
        JOIN clients cl ON ca.client_id = cl.id
        LEFT JOIN keywords k ON k.campaign_id = ca.id
        LEFT JOIN content_items ci ON ci.campaign_id = ca.id
+       WHERE 1=1 ${archivedClause}
        GROUP BY ca.id ORDER BY ca.created_at DESC`
   
   const campaigns = clientId
