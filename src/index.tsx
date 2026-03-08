@@ -664,13 +664,27 @@ function getAppHTML(): string {
   <title>DSG Campaign Manager – Digital Search Group</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a1a2e'/><text x='16' y='22' text-anchor='middle' font-size='14' font-weight='900' font-family='Arial' fill='%237C5CFC'>D</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            violet: { 50:'#f5f3ff',100:'#ede9fe',200:'#ddd6fe',300:'#c4b5fd',400:'#a07dff',500:'#7C5CFC',600:'#6a4ee0',700:'#5b3fd4',800:'#4c32b8',900:'#3b2490' },
+            gray:   { 50:'#f8f7ff',100:'#f0edf8',200:'#e8e4f5',300:'#d4cef0',400:'#b0aac8',500:'#9892b0',600:'#6b6585',700:'#4a4468',800:'#2d2850',900:'#1e1b30' },
+            slate:  { 50:'#f8f7ff',100:'#f0edf8',200:'#e8e4f5',300:'#d4cef0',400:'#b0aac8',500:'#9892b0',600:'#6b6585',700:'#4a4468',800:'#2d2850',900:'#1e1b30' },
+          },
+          fontFamily: { sans: ['Montserrat','system-ui','sans-serif'], display: ['Maven Pro','Montserrat','sans-serif'] },
+        }
+      }
+    }
+  </script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Maven+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
   <style>
     /* ═══════════════════════════════════════════════════
-       DSG PREMIUM UI v3 — #7C5CFC violet · #1a1a2e dark
+       DSG PREMIUM UI — #7C5CFC violet · #1a1a2e dark
        ═══════════════════════════════════════════════════ */
     :root {
       --p:    #7C5CFC;
@@ -688,8 +702,64 @@ function getAppHTML(): string {
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: 'Montserrat', system-ui, sans-serif; background: var(--bg); color: var(--txt); margin: 0; font-size: 14px; line-height: 1.5; }
     h1,h2,h3,h4,h5,h6 { font-family: 'Maven Pro','Montserrat',system-ui,sans-serif; font-weight: 700; margin: 0; }
-    a { text-decoration: none; }
+    a { text-decoration: none; color: inherit; }
     button { font-family: inherit; }
+
+    /* ── Tailwind utility overrides — ensures DSG brand throughout ── */
+    .text-gray-900, .text-slate-900 { color: #1e1b30 !important; }
+    .text-gray-800, .text-slate-800 { color: #2d2850 !important; }
+    .text-gray-700, .text-slate-700 { color: #4a4468 !important; }
+    .text-gray-600, .text-slate-600 { color: #6b6585 !important; }
+    .text-gray-500, .text-slate-500 { color: #9892b0 !important; }
+    .text-gray-400, .text-slate-400 { color: #b0aac8 !important; }
+    .text-gray-300, .text-slate-300 { color: #d4cef0 !important; }
+    .text-violet-600 { color: #7C5CFC !important; }
+    .text-violet-700 { color: #6a4ee0 !important; }
+    .text-violet-500 { color: #a07dff !important; }
+    .text-green-600  { color: #16a34a !important; }
+    .text-green-700  { color: #15803d !important; }
+    .text-red-600    { color: #dc2626 !important; }
+    .text-amber-600  { color: #d97706 !important; }
+    .text-blue-600   { color: #2563eb !important; }
+    .hover\:text-violet-600:hover { color: #7C5CFC !important; }
+    .hover\:underline:hover { text-decoration: underline; }
+
+    .bg-white        { background: #ffffff !important; }
+    .bg-gray-50, .bg-slate-50  { background: #f8f7ff !important; }
+    .bg-gray-100, .bg-slate-100 { background: #f0edf8 !important; }
+    .bg-violet-50, .bg-purple-50  { background: rgba(124,92,252,0.06) !important; }
+    .bg-violet-100, .bg-purple-100 { background: rgba(124,92,252,0.1) !important; }
+    .bg-violet-500, .bg-purple-500 { background: #7C5CFC !important; }
+    .bg-violet-600, .bg-purple-600 { background: #6a4ee0 !important; }
+    .hover\:bg-violet-100:hover { background: rgba(124,92,252,0.12) !important; }
+    .hover\:bg-violet-600:hover { background: #6a4ee0 !important; }
+    .bg-green-50   { background: rgba(22,163,74,0.06) !important; }
+    .bg-blue-50    { background: rgba(37,99,235,0.06) !important; }
+    .bg-blue-100   { background: rgba(37,99,235,0.1) !important; }
+
+    .border-gray-100 { border-color: #f0edf8 !important; }
+    .border-gray-200 { border-color: #e8e4f5 !important; }
+    .border-gray-300 { border-color: #d4cef0 !important; }
+    .border-violet-200, .border-purple-200 { border-color: rgba(124,92,252,0.25) !important; }
+    .border-violet-300, .border-purple-300 { border-color: rgba(124,92,252,0.4) !important; }
+    .border-violet-500, .border-purple-500 { border-color: #7C5CFC !important; }
+    .has-\[\:checked\]\:border-violet-500:has(:checked) { border-color: #7C5CFC !important; }
+    .has-\[\:checked\]\:bg-violet-50:has(:checked) { background: rgba(124,92,252,0.06) !important; }
+    .border-t { border-top-color: #e8e4f5 !important; }
+    .border-b { border-bottom-color: #e8e4f5 !important; }
+    .divide-y > * + * { border-top-color: #f0edf8 !important; }
+
+    .text-violet-600, .text-purple-600 { color: #7C5CFC !important; }
+    .text-violet-700, .text-purple-700 { color: #6a4ee0 !important; }
+    .text-violet-500, .text-purple-500 { color: #a07dff !important; }
+    .text-blue-700   { color: #2563eb !important; }
+    .text-blue-600   { color: #2563eb !important; }
+
+    .shadow-sm { box-shadow: 0 1px 6px rgba(124,92,252,0.07) !important; }
+    .shadow-md { box-shadow: 0 4px 16px rgba(124,92,252,0.1) !important; }
+    .rounded-xl { border-radius: 14px; }
+    .rounded-2xl { border-radius: 18px; }
+    .line-clamp-2 { display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
 
     /* ── Keyframes ── */
     @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
