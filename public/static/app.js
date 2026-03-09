@@ -2991,22 +2991,37 @@ function renderContent() {
 function renderNewContentModal() {
   return `
     <div id="new_content_modal" class="modal-overlay hidden">
-      <div class="modal-box p-6">
-        <div class="flex items-center justify-between mb-5">
-          <h3 class="text-lg font-bold text-gray-900">New Content Item</h3>
-          <button onclick="closeModal('new_content_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+      <div class="modal-box">
+        <div class="modal-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#9e7cff,#7C5CFC);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="fas fa-pen-nib" style="color:#fff;font-size:14px"></i>
+            </div>
+            <div>
+              <div style="font-family:'Maven Pro',sans-serif;font-weight:800;font-size:16px;color:#1e1b30">New Content Item</div>
+              <div style="font-size:11px;color:#9892b0;margin-top:1px">Add to content pipeline</div>
+            </div>
+          </div>
+          <button onclick="closeModal('new_content_modal')" style="width:30px;height:30px;border-radius:8px;border:none;background:rgba(124,92,252,0.08);cursor:pointer;color:#9892b0;display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='rgba(124,92,252,0.15)';this.style.color='#7C5CFC'" onmouseout="this.style.background='rgba(124,92,252,0.08)';this.style.color='#9892b0'">
+            <i class="fas fa-times" style="font-size:13px"></i>
+          </button>
         </div>
-        <div class="space-y-4">
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Campaign</label>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label>Client</label>
             <select id="ncoClient" class="input-field" onchange="loadCampaignsForContent(this.value)">
               <option value="">Select client...</option>
               ${(state.clients||[]).map(cl => `<option value="${cl.id}">${cl.company_name}</option>`).join('')}
-            </select></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Campaign</label>
+            </select>
+          </div>
+          <div>
+            <label>Campaign</label>
             <select id="ncoCampaign" class="input-field">
               <option value="">Select campaign first...</option>
-            </select></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Content Type</label>
+            </select>
+          </div>
+          <div>
+            <label>Content Type</label>
             <select id="ncoType" class="input-field">
               <option value="blog_post">Blog Post</option>
               <option value="landing_page">SEO Landing Page</option>
@@ -3019,27 +3034,40 @@ function renderNewContentModal() {
               <option value="faq_page">FAQ Page</option>
               <option value="meta_optimization">Meta Optimisation</option>
               <option value="guestpost">Guest Post</option>
-            </select></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input type="text" id="ncoTitle" class="input-field" placeholder="Content title"></div>
-          <div class="grid grid-cols-2 gap-3">
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Target Keyword</label>
-              <input type="text" id="ncoKeyword" class="input-field" placeholder="primary keyword"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Word Count</label>
-              <input type="number" id="ncoWords" class="input-field" value="1500"></div>
+            </select>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-              <input type="date" id="ncoDue" class="input-field"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
-              <input type="text" id="ncoAssigned" class="input-field" placeholder="Writer name"></div>
+          <div>
+            <label>Title</label>
+            <input type="text" id="ncoTitle" class="input-field" placeholder="Content title">
           </div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Target URL</label>
-            <input type="text" id="ncoUrl" class="input-field" placeholder="https://..."></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label>Target Keyword</label>
+              <input type="text" id="ncoKeyword" class="input-field" placeholder="primary keyword">
+            </div>
+            <div>
+              <label>Word Count</label>
+              <input type="number" id="ncoWords" class="input-field" value="1500">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label>Due Date</label>
+              <input type="date" id="ncoDue" class="input-field">
+            </div>
+            <div>
+              <label>Assigned To</label>
+              <input type="text" id="ncoAssigned" class="input-field" placeholder="Writer name">
+            </div>
+          </div>
+          <div>
+            <label>Target URL</label>
+            <input type="text" id="ncoUrl" class="input-field" placeholder="https://...">
+          </div>
         </div>
-        <div class="flex gap-3 mt-5">
-          <button onclick="autoGenerateBrief()" class="btn-secondary flex-1"><i class="fas fa-magic mr-1"></i>Auto-Brief</button>
-          <button onclick="saveNewContent()" class="btn-primary flex-1"><i class="fas fa-plus mr-2"></i>Add Content</button>
+        <div class="modal-footer">
+          <button onclick="autoGenerateBrief()" class="btn-secondary"><i class="fas fa-magic mr-2"></i>Auto-Brief</button>
+          <button onclick="saveNewContent()" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Content</button>
         </div>
       </div>
     </div>

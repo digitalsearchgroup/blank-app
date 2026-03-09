@@ -705,6 +705,10 @@ function getAppHTML(): string {
     a { text-decoration: none; color: inherit; }
     button { font-family: inherit; }
 
+    /* ── Tailwind preflight fixes ── */
+    button { color: inherit; background: none; border: none; }
+    a { color: inherit; }
+
     /* ── Tailwind utility overrides — ensures DSG brand throughout ── */
     .text-gray-900, .text-slate-900 { color: #1e1b30 !important; }
     .text-gray-800, .text-slate-800 { color: #2d2850 !important; }
@@ -776,7 +780,7 @@ function getAppHTML(): string {
     .sidebar {
       width: 240px; flex-shrink: 0;
       display: flex; flex-direction: column;
-      background: linear-gradient(175deg, #1a1829 0%, #14112a 60%, #0e1628 100%);
+      background: linear-gradient(175deg, #1a1829 0%, #14112a 60%, #0e1628 100%) !important;
       border-right: 1px solid rgba(255,255,255,0.05);
       overflow-y: auto; overflow-x: hidden;
       box-shadow: 4px 0 24px rgba(0,0,0,0.25);
@@ -805,8 +809,8 @@ function getAppHTML(): string {
     .sb-link {
       display: flex; align-items: center; gap: 10px;
       padding: 9px 12px; border-radius: 10px;
-      color: rgba(255,255,255,0.52);
-      background: transparent; border: none;
+      color: rgba(255,255,255,0.75) !important;
+      background: transparent !important; border: none;
       cursor: pointer; width: 100%; text-align: left;
       font-size: 12.5px; font-weight: 500;
       letter-spacing: 0.01em;
@@ -814,18 +818,18 @@ function getAppHTML(): string {
       position: relative;
     }
     .sb-link:hover {
-      color: rgba(255,255,255,0.88);
-      background: rgba(255,255,255,0.07);
+      color: #fff !important;
+      background: rgba(255,255,255,0.09) !important;
     }
     .sb-link.active {
-      color: #fff;
-      background: linear-gradient(90deg, rgba(124,92,252,0.28) 0%, rgba(124,92,252,0.1) 100%);
+      color: #fff !important;
+      background: linear-gradient(90deg, rgba(124,92,252,0.35) 0%, rgba(124,92,252,0.12) 100%) !important;
       border-left: 2.5px solid #7C5CFC;
       padding-left: 9.5px;
     }
-    .sb-link.active .sb-icon { color: #a07dff; }
-    .sb-icon { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; color: rgba(255,255,255,0.35); transition: color 0.15s; }
-    .sb-link:hover .sb-icon { color: rgba(255,255,255,0.7); }
+    .sb-link.active .sb-icon { color: #a07dff !important; }
+    .sb-icon { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; color: rgba(255,255,255,0.5) !important; transition: color 0.15s; }
+    .sb-link:hover .sb-icon { color: rgba(255,255,255,0.85) !important; }
 
     /* Sidebar footer */
     .sb-footer { padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
@@ -1011,25 +1015,54 @@ function getAppHTML(): string {
     /* ══ MODALS ══ */
     .modal-overlay {
       position: fixed; inset: 0;
-      background: rgba(8,6,20,0.7); backdrop-filter: blur(6px);
+      background: rgba(8,6,20,0.75); backdrop-filter: blur(8px);
       display: flex; align-items: center; justify-content: center;
-      z-index: 50; padding: 16px;
+      z-index: 9999; padding: 16px;
       animation: fadeIn 0.2s ease;
     }
     .modal-overlay.hidden { display: none; }
     .modal-box {
-      background: var(--surf); border-radius: 18px;
-      box-shadow: 0 40px 80px rgba(0,0,0,0.35), 0 4px 20px rgba(124,92,252,0.15);
+      background: #ffffff !important; border-radius: 18px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.4), 0 4px 20px rgba(124,92,252,0.2);
       width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto;
-      border: 1px solid var(--bdr);
+      border: 1px solid #e8e4f5;
+      position: relative; z-index: 1;
     }
-    .modal-header {
-      padding: 22px 24px 18px;
-      border-bottom: 1px solid var(--bdr);
+    .modal-box.max-w-md { max-width: 440px; }
+    .modal-box.max-w-lg { max-width: 560px; }
+    /* Padding helper for older modals */
+    .modal-box.p-6 { padding: 0; }
+    .modal-box.p-6 > div:first-child {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #e8e4f5;
       display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(135deg, #fdfcff 0%, #f5f3fd 100%);
+      border-radius: 18px 18px 0 0;
     }
-    .modal-body { padding: 22px 24px; }
-    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--bdr); display: flex; justify-content: flex-end; gap: 10px; }
+    .modal-box.p-6 > div:first-child h3,
+    .modal-box.p-6 > div:first-child .text-lg { 
+      font-family: 'Maven Pro',sans-serif; font-weight: 800; font-size: 16px; color: #1e1b30 !important; 
+    }
+    .modal-box.p-6 > div:first-child button { 
+      color: #9892b0 !important; background: rgba(124,92,252,0.08) !important;
+      width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-box.p-6 > div:first-child button:hover { background: rgba(124,92,252,0.15) !important; color: #7C5CFC !important; }
+    /* Body area in p-6 modals */
+    .modal-box.p-6 > .space-y-4,
+    .modal-box.p-6 > div:nth-child(2) { padding: 20px 24px; }
+    /* Footer area */
+    .modal-box.p-6 > div:last-child:not(:first-child) { padding: 14px 24px 20px; }
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #e8e4f5;
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(135deg, #fdfcff 0%, #f5f3fd 100%);
+      border-radius: 18px 18px 0 0;
+    }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 14px 24px 20px; border-top: 1px solid #e8e4f5; display: flex; justify-content: flex-end; gap: 10px; background: #faf9ff; border-radius: 0 0 18px 18px; }
 
     /* ══ BADGES / PILLS ══ */
     .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; }
