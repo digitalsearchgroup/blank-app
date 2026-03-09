@@ -324,7 +324,7 @@ function renderSidebar() {
   }
 
   return `
-    <aside class="sidebar">
+    <aside class="sidebar" style="background:linear-gradient(175deg,#1a1829 0%,#14112a 60%,#0e1628 100%)!important;color:#fff">
       <!-- Logo -->
       <div class="sb-logo">
         <img
@@ -1518,14 +1518,24 @@ function renderNewPlanModal() {
 function renderTaskEditModal() {
   return `
     <div id="task_edit_modal" class="modal-overlay hidden">
-      <div class="modal-box p-6">
-        <div class="flex items-center justify-between mb-5">
-          <h3 class="text-lg font-bold text-gray-900" id="taskEditTitle">Update Task</h3>
-          <button onclick="closeModal('task_edit_modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+      <div class="modal-box" style="max-width:500px">
+        <div class="modal-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7C5CFC,#6a4ee0);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="fas fa-pen" style="color:#fff;font-size:13px"></i>
+            </div>
+            <div>
+              <div style="font-family:'Maven Pro',sans-serif;font-weight:800;font-size:15px;color:#1e1b30" id="taskEditTitle">Update Task</div>
+              <div style="font-size:11px;color:#9892b0;margin-top:1px">Edit task details &amp; status</div>
+            </div>
+          </div>
+          <button onclick="closeModal('task_edit_modal')" style="width:30px;height:30px;border-radius:8px;border:none;cursor:pointer;background:rgba(124,92,252,0.08);color:#9892b0;font-size:14px;display:flex;align-items:center;justify-content:center" onmouseover="this.style.background='rgba(124,92,252,0.18)';this.style.color='#7C5CFC'" onmouseout="this.style.background='rgba(124,92,252,0.08)';this.style.color='#9892b0'">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
-        <div class="space-y-4">
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label>Status</label>
             <select id="taskEditStatus" class="input-field">
               <option value="pending">Pending</option>
               <option value="in_progress">In Progress</option>
@@ -1536,34 +1546,34 @@ function renderTaskEditModal() {
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+            <label>Assigned To</label>
             <input type="text" id="taskEditAssigned" class="input-field" placeholder="Team member name or email">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Deliverable URL</label>
+            <label>Deliverable URL</label>
             <input type="url" id="taskEditDelivUrl" class="input-field" placeholder="https://...">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Reference URL</label>
+            <label>Reference URL</label>
             <input type="url" id="taskEditRefUrl" class="input-field" placeholder="https://...">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Internal Notes</label>
+            <label>Internal Notes</label>
             <textarea id="taskEditNotes" class="input-field" rows="3" placeholder="Notes for this task..."></textarea>
           </div>
-          <div class="flex items-center gap-2">
-            <input type="checkbox" id="taskEditClientVisible" class="w-4 h-4 accent-violet-600">
-            <label class="text-sm text-gray-700">Show in client report</label>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#f8f7ff;border-radius:10px;border:1px solid #e8e4f5">
+            <input type="checkbox" id="taskEditClientVisible" style="width:16px;height:16px;accent-color:#7C5CFC">
+            <label style="margin:0;font-size:13px;font-weight:500;color:#4a4468;cursor:pointer" for="taskEditClientVisible">Show in client report</label>
           </div>
           <div id="taskEditClientLabelRow" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Client-Facing Label</label>
+            <label>Client-Facing Label</label>
             <input type="text" id="taskEditClientLabel" class="input-field" placeholder="Override label shown to client">
           </div>
           <input type="hidden" id="taskEditId">
-          <div class="flex gap-3">
-            <button onclick="closeModal('task_edit_modal')" class="btn-secondary flex-1">Cancel</button>
-            <button onclick="saveTaskEdit()" class="btn-primary flex-1"><i class="fas fa-save mr-2"></i>Save Task</button>
-          </div>
+        </div>
+        <div class="modal-footer">
+          <button onclick="closeModal('task_edit_modal')" class="btn-secondary">Cancel</button>
+          <button onclick="saveTaskEdit()" class="btn-primary"><i class="fas fa-save" style="margin-right:6px"></i>Save Task</button>
         </div>
       </div>
     </div>

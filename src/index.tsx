@@ -1031,29 +1031,36 @@ function getAppHTML(): string {
     .modal-box.max-w-md { max-width: 440px; }
     .modal-box.max-w-lg { max-width: 560px; }
     /* Padding helper for older modals */
-    .modal-box.p-6 { padding: 0; }
+    /* ── Modal p-6 legacy compatibility ── */
+    .modal-box.p-6 { padding: 0 !important; }
     .modal-box.p-6 > div:first-child {
-      padding: 20px 24px 16px;
-      border-bottom: 1px solid #e8e4f5;
-      display: flex; align-items: center; justify-content: space-between;
-      background: linear-gradient(135deg, #fdfcff 0%, #f5f3fd 100%);
-      border-radius: 18px 18px 0 0;
+      padding: 18px 22px 16px !important;
+      border-bottom: 1px solid #e8e4f5 !important;
+      display: flex !important; align-items: center !important; justify-content: space-between !important;
+      background: linear-gradient(135deg, #fdfcff 0%, #f0ecfd 100%) !important;
+      border-radius: 18px 18px 0 0 !important;
+      margin: 0 !important;
+      gap: 10px !important;
     }
     .modal-box.p-6 > div:first-child h3,
-    .modal-box.p-6 > div:first-child .text-lg { 
-      font-family: 'Maven Pro',sans-serif; font-weight: 800; font-size: 16px; color: #1e1b30 !important; 
+    .modal-box.p-6 > div:first-child .text-lg,
+    .modal-box.p-6 > div:first-child span.font-bold { 
+      font-family: 'Maven Pro',sans-serif !important; font-weight: 800 !important; font-size: 15px !important; color: #1e1b30 !important; 
     }
-    .modal-box.p-6 > div:first-child button { 
+    .modal-box.p-6 > div:first-child > button {
       color: #9892b0 !important; background: rgba(124,92,252,0.08) !important;
-      width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
+      width: 30px !important; height: 30px !important; border-radius: 8px !important; border: none !important; cursor: pointer !important;
+      display: flex !important; align-items: center !important; justify-content: center !important;
+      flex-shrink: 0 !important; padding: 0 !important; margin: 0 !important;
     }
-    .modal-box.p-6 > div:first-child button:hover { background: rgba(124,92,252,0.15) !important; color: #7C5CFC !important; }
+    .modal-box.p-6 > div:first-child > button:hover { background: rgba(124,92,252,0.18) !important; color: #7C5CFC !important; }
     /* Body area in p-6 modals */
-    .modal-box.p-6 > .space-y-4,
-    .modal-box.p-6 > div:nth-child(2) { padding: 20px 24px; }
-    /* Footer area */
-    .modal-box.p-6 > div:last-child:not(:first-child) { padding: 14px 24px 20px; }
+    .modal-box.p-6 > div:nth-child(2) { padding: 20px 22px !important; }
+    .modal-box.p-6 > .space-y-4 { padding: 20px 22px !important; }
+    /* Footer area — last div that isn't the header */
+    .modal-box.p-6 > div:last-child:not(:first-child) { padding: 12px 22px 18px !important; }
+    /* Paragraph after header */
+    .modal-box.p-6 > p { padding: 0 22px !important; margin-top: 14px !important; margin-bottom: 0 !important; color: #6b6585 !important; font-size: 13px !important; }
     .modal-header {
       padding: 20px 24px 16px;
       border-bottom: 1px solid #e8e4f5;
